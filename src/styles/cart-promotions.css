@@ -1,0 +1,111 @@
+.cart-coupon-box {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.cart-coupon-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--t2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.cart-coupon-form {
+  display: flex;
+  gap: 8px;
+}
+
+.cart-coupon-input {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--txt);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.cart-coupon-input:focus {
+  border-color: var(--purple);
+}
+
+.cart-coupon-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cart-coupon-button {
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: none;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+}
+
+.cart-coupon-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cart-coupon-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.cart-coupon-applied-code {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #22c55e;
+  letter-spacing: 1px;
+}
+
+.cart-coupon-remove-button {
+  background: none;
+  border: none;
+  color: var(--t2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: color 0.15s;
+}
+
+.cart-coupon-remove-button:hover {
+  color: #f87171;
+}
+
+.cart-coupon-message {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.cart-coupon-message--applied {
+  color: #22c55e;
+}
+
+.cart-coupon-message--error {
+  color: #f87171;
+}

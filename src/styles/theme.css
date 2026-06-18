@@ -1,0 +1,51 @@
+:root {
+  /* Roxo */
+  --roxo: #5b1a8a;
+  --roxo-v: #8b2fc9;
+  --roxo-c: #c084fc;
+
+  /* Amarelo */
+  --am: #f5c800;
+  --am-c: #ffe566;
+
+  /* Verde */
+  --vd: #2d7a2d;
+  --vd-v: #38a838;
+  --vd-c: #7ed957;
+
+  /* Fundo / cinzas */
+  --bg: #0d0d0d;
+  --c1: #1a1a1a;
+  --c2: #222222;
+  --c3: #333333;
+  --c4: #444444;
+
+  /* Texto */
+  --txt: #ffffff;
+  --t2: rgba(255, 255, 255, 0.55);
+  --t3: rgba(255, 255, 255, 0.28);
+
+  /* Card e layout */
+  --card: #1e1e1e;
+  --bnav: 64px;
+  --max: 480px;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+
+  /* Border radius */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 9999px;
+
+  /* Transições */
+  --transition: 0.2s ease;
+
+  /* Fontes */
+  --font-brand: 'Pacifico', cursive;
+  --font-body: 'Nunito', sans-serif;
+}

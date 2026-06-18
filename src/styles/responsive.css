@@ -1,0 +1,95 @@
+/* ── Utilitários de visibilidade ── */
+
+/* Visível apenas em mobile (< 768px) */
+.mobile-only { display: block; }
+@media (min-width: 768px) { .mobile-only { display: none !important; } }
+
+/* Visível apenas em tablet+ (≥ 768px) */
+.tablet-up { display: none; }
+@media (min-width: 768px) { .tablet-up { display: block; } }
+
+/* Visível apenas em desktop (≥ 1024px) */
+.desktop-only { display: none !important; }
+@media (min-width: 1024px) { .desktop-only { display: block !important; } }
+
+/* Oculto no desktop */
+.hide-desktop { display: block; }
+@media (min-width: 1024px) { .hide-desktop { display: none !important; } }
+
+/* ── Contêiner responsivo ── */
+.container {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+    padding: 0 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1180px;
+    padding: 0 32px;
+  }
+}
+
+/* ── Grid responsivo de produtos ── */
+.product-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+/* ── Cards em 2 colunas no tablet ── */
+.card-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 768px) {
+  .card-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+/* ── Stat cards admin ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ── Scrollbar invisível ── */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-x::-webkit-scrollbar { display: none; }
