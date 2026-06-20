@@ -549,6 +549,7 @@
 }
 .admin-loyalty-detail-history-qty.earned { color: #4ade80; }
 .admin-loyalty-detail-history-qty.removed { color: #f87171; }
+.admin-loyalty-detail-history-qty.redeem { color: #ffe100; }
 
 .admin-loyalty-detail-history-reason {
   flex: 1;
@@ -562,6 +563,46 @@
   color: var(--t3);
   white-space: nowrap;
 }
+
+/* ── Redeem reward ── */
+.admin-loyalty-redeem-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--r-md);
+  background: rgba(255, 225, 0, 0.06);
+  border: 1px solid rgba(255, 225, 0, 0.22);
+  margin-bottom: 14px;
+}
+
+.admin-loyalty-redeem-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #ffe100;
+}
+
+.admin-loyalty-redeem-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(255, 225, 0, 0.14);
+  border: 1px solid rgba(255, 225, 0, 0.35);
+  border-radius: var(--r-md);
+  color: #ffe100;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.admin-loyalty-redeem-btn:hover { background: rgba(255, 225, 0, 0.22); }
+.admin-loyalty-redeem-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {

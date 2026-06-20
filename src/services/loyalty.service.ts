@@ -76,3 +76,12 @@ export async function uploadLoyaltyCardImageRequest(
   });
   return unwrap<{ url: string }>(response);
 }
+
+export async function redeemCustomerLoyaltyRewardRequest(
+  customerId: string,
+): Promise<AdminLoyaltyCustomer> {
+  const response = await api.post(
+    `/admin/loyalty/customers/${customerId}/rewards/redeem`,
+  );
+  return unwrap<AdminLoyaltyCustomer>(response);
+}

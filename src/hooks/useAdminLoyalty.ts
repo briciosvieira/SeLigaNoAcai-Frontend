@@ -7,6 +7,7 @@ import {
   addCustomerLoyaltyStampRequest,
   removeCustomerLoyaltyStampRequest,
   uploadLoyaltyCardImageRequest,
+  redeemCustomerLoyaltyRewardRequest,
 } from '@/services/loyalty.service';
 import { getApiErrorMessage } from '@/utils/api-error.util';
 import type {
@@ -149,6 +150,21 @@ export function useAdminLoyalty() {
     [],
   );
 
+  const redeemReward = useCallback(async (customerId: string) => {
+    setIsStampAction(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const updated = await redeemCustomerLoyaltyRewardRequest(customerId);
+      setSelectedCustomer(updated);
+      setSuccessMessage('Brinde marcado como entregue! Brindes disponíveis atualizados.');
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setIsStampAction(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadSettings();
   }, [loadSettings]);
@@ -176,5 +192,6 @@ export function useAdminLoyalty() {
     openCustomer,
     addStamp,
     removeStamp,
+    redeemReward,
   };
 }

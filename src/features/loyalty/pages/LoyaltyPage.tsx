@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLoyalty } from '@/hooks/useLoyalty';
 import { useAuthStore } from '@/store/auth.store';
 import { FullPageSpinner } from '@/components/ui/Spinner';
 import { formatBRL } from '@/utils/currency.util';
+import { resolveImageUrl } from '@/utils/image-url.util';
 import './LoyaltyPage.css';
 
 function LoyaltyStampGrid({ stamps, total }: { stamps: number; total: number }) {
@@ -41,6 +42,8 @@ export function LoyaltyPage() {
   const user = useAuthStore((s) => s.user);
   const { data, isLoading, isDisabled, error, reload } = useLoyalty();
 
+  const [cardImageError, setCardImageError] = useState(false);
+
   useEffect(() => {
     if (isDisabled) {
       navigate('/', { replace: true });
@@ -59,10 +62,11 @@ export function LoyaltyPage() {
   const stamps = card?.stamps ?? 0;
   const availableRewards = card?.availableRewards ?? 0;
   const minAmount = Number(settings?.minOrderAmount ?? 0);
-  const cardImageUrl = settings?.cardImageUrl;
 
-  const cardStyle: React.CSSProperties = cardImageUrl
-    ? { backgroundImage: `url(${cardImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  const resolvedCardImageUrl = !cardImageError ? resolveImageUrl(settings?.cardImageUrl) : null;
+
+  const cardStyle: React.CSSProperties = resolvedCardImageUrl
+    ? { backgroundImage: `url(${resolvedCardImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : {};
 
   const defaultDesc = settings
@@ -92,10 +96,18 @@ export function LoyaltyPage() {
         {!error && card && (
           <>
             <div
-              className={`loyalty-card-virtual${cardImageUrl ? ' has-image' : ''}`}
+              className={`loyalty-card-virtual${resolvedCardImageUrl ? ' has-image' : ''}`}
               style={cardStyle}
             >
-              {cardImageUrl && <div className="loyalty-card-overlay" />}
+              {resolvedCardImageUrl && (
+                <img
+                  src={resolvedCardImageUrl}
+                  alt=""
+                  style={{ display: 'none' }}
+                  onError={() => setCardImageError(true)}
+                />
+              )}
+              {resolvedCardImageUrl && <div className="loyalty-card-overlay" />}
 
               <div className="loyalty-card-content">
                 <p className="loyalty-card-eyebrow">Cartão Fidelidade</p>
@@ -148,19 +160,26 @@ export function LoyaltyPage() {
               <div className="loyalty-history">
                 <h3 className="loyalty-history-title">Histórico</h3>
                 <div className="loyalty-history-list">
-                  {history.map((item) => (
-                    <div key={item.id} className="loyalty-history-item">
-                      <div className="loyalty-history-info">
-                        <span className={`loyalty-history-type ${item.quantity > 0 ? 'earned' : 'removed'}`}>
-                          {item.quantity > 0 ? `+${item.quantity}` : item.quantity} selo{Math.abs(item.quantity) !== 1 ? 's' : ''}
-                        </span>
-                        {item.reason && (
-                          <span className="loyalty-history-reason">{item.reason}</span>
-                        )}
+                  {history.map((item) => {
+                    const isRedeem = item.type === 'REWARD_REDEEMED';
+                    return (
+                      <div key={item.id} className="loyalty-history-item">
+                        <div className="loyalty-history-info">
+                          {isRedeem ? (
+                            <span className="loyalty-history-type redeem">🎁 Brinde entregue</span>
+                          ) : (
+                            <span className={`loyalty-history-type ${item.quantity > 0 ? 'earned' : 'removed'}`}>
+                              {item.quantity > 0 ? `+${item.quantity}` : item.quantity} selo{Math.abs(item.quantity) !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {item.reason && (
+                            <span className="loyalty-history-reason">{item.reason}</span>
+                          )}
+                        </div>
+                        <span className="loyalty-history-date">{formatDate(item.createdAt)}</span>
                       </div>
-                      <span className="loyalty-history-date">{formatDate(item.createdAt)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

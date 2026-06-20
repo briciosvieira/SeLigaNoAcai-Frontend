@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Gift, Upload, Search, Plus, Minus, X, Check } from 'lucide-react';
 import { useAdminLoyalty } from '@/hooks/useAdminLoyalty';
 import { formatBRL } from '@/utils/currency.util';
+import { resolveImageUrl } from '@/utils/image-url.util';
 import './AdminLoyaltyPage.css';
 
 function formatDate(iso: string): string {
@@ -236,18 +237,24 @@ export function AdminLoyaltyPage() {
               {/* Image upload */}
               <div className="admin-loyalty-image-section">
                 <label>Imagem de fundo do cartão fidelidade</label>
-                {loy.settings?.cardImageUrl ? (
+                {resolveImageUrl(loy.settings?.cardImageUrl) ? (
                   <img
-                    src={loy.settings.cardImageUrl}
+                    src={resolveImageUrl(loy.settings?.cardImageUrl) ?? undefined}
                     alt="Preview do cartão"
                     className="admin-loyalty-image-preview"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                      (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                    }}
                   />
-                ) : (
-                  <div className="admin-loyalty-image-placeholder">
-                    <Upload size={24} />
-                    <span>Nenhuma imagem</span>
-                  </div>
-                )}
+                ) : null}
+                <div
+                  className="admin-loyalty-image-placeholder"
+                  style={{ display: resolveImageUrl(loy.settings?.cardImageUrl) ? 'none' : 'flex' }}
+                >
+                  <Upload size={24} />
+                  <span>Nenhuma imagem</span>
+                </div>
                 <div className="admin-loyalty-upload-row">
                   <button
                     className="admin-loyalty-upload-btn"
@@ -398,6 +405,30 @@ export function AdminLoyaltyPage() {
                   </div>
                 </div>
 
+                {/* Redeem reward */}
+                {loy.selectedCustomer.availableRewards > 0 && (
+                  <div className="admin-loyalty-redeem-section">
+                    <div className="admin-loyalty-redeem-info">
+                      <Gift size={16} />
+                      <span>
+                        {loy.selectedCustomer.availableRewards}{' '}
+                        {loy.selectedCustomer.availableRewards === 1
+                          ? 'brinde disponível'
+                          : 'brindes disponíveis'}
+                      </span>
+                    </div>
+                    <button
+                      className="admin-loyalty-redeem-btn"
+                      onClick={() => void loy.redeemReward(loy.selectedCustomer!.customerId)}
+                      disabled={loy.isStampAction}
+                      type="button"
+                    >
+                      <Check size={14} />
+                      {loy.isStampAction ? 'Processando…' : 'Marcar brinde como entregue'}
+                    </button>
+                  </div>
+                )}
+
                 {/* Stamp form */}
                 <div className="admin-loyalty-stamp-form">
                   <p className="admin-loyalty-stamp-form-title">Adicionar / Remover selos</p>
@@ -448,26 +479,35 @@ export function AdminLoyaltyPage() {
                   <>
                     <p className="admin-loyalty-detail-history-title">Histórico</p>
                     <div className="admin-loyalty-detail-history-list">
-                      {loy.selectedCustomer.history.map((item) => (
-                        <div
-                          key={item.id}
-                          className="admin-loyalty-detail-history-item"
-                        >
-                          <span
-                            className={`admin-loyalty-detail-history-qty ${item.quantity > 0 ? 'earned' : 'removed'}`}
+                      {loy.selectedCustomer.history.map((item) => {
+                        const isRedeem = item.type === 'REWARD_REDEEMED';
+                        return (
+                          <div
+                            key={item.id}
+                            className="admin-loyalty-detail-history-item"
                           >
-                            {item.quantity > 0 ? '+' : ''}{item.quantity}
-                          </span>
-                          {item.reason && (
-                            <span className="admin-loyalty-detail-history-reason">
-                              {item.reason}
+                            {isRedeem ? (
+                              <span className="admin-loyalty-detail-history-qty redeem">
+                                🎁 Brinde
+                              </span>
+                            ) : (
+                              <span
+                                className={`admin-loyalty-detail-history-qty ${item.quantity > 0 ? 'earned' : 'removed'}`}
+                              >
+                                {item.quantity > 0 ? '+' : ''}{item.quantity}
+                              </span>
+                            )}
+                            {item.reason && (
+                              <span className="admin-loyalty-detail-history-reason">
+                                {item.reason}
+                              </span>
+                            )}
+                            <span className="admin-loyalty-detail-history-date">
+                              {formatDate(item.createdAt)}
                             </span>
-                          )}
-                          <span className="admin-loyalty-detail-history-date">
-                            {formatDate(item.createdAt)}
-                          </span>
-                        </div>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   </>
                 )}

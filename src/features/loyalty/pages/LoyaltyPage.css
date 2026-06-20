@@ -265,6 +265,10 @@
   color: #f87171;
 }
 
+.loyalty-history-type.redeem {
+  color: #ffe100;
+}
+
 .loyalty-history-reason {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
