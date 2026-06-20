@@ -42,6 +42,7 @@ export type AdminLoyaltyCustomer = {
 };
 
 export type AdminLoyaltyCustomerListItem = {
+  id?: string;
   customerId: string;
   customerName: string;
   customerEmail?: string | null;

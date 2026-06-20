@@ -27,6 +27,7 @@ export function useAdminLoyalty() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<AdminLoyaltyCustomerListItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const [selectedCustomer, setSelectedCustomer] = useState<AdminLoyaltyCustomer | null>(null);
   const [isLoadingCustomer, setIsLoadingCustomer] = useState(false);

@@ -28,13 +28,23 @@ export async function updateAdminLoyaltySettingsRequest(
   return unwrap<LoyaltySettings>(response);
 }
 
+function normalizeCustomerSearchResponse(payload: unknown): AdminLoyaltyCustomerListItem[] {
+  const source = (payload as Record<string, unknown>)?.data ?? payload;
+  if (Array.isArray(source)) return source as AdminLoyaltyCustomerListItem[];
+  const s = source as Record<string, unknown>;
+  if (Array.isArray(s?.items)) return s.items as AdminLoyaltyCustomerListItem[];
+  if (Array.isArray(s?.customers)) return s.customers as AdminLoyaltyCustomerListItem[];
+  if (Array.isArray(s?.data)) return s.data as AdminLoyaltyCustomerListItem[];
+  return [];
+}
+
 export async function searchLoyaltyCustomersRequest(
   search: string,
 ): Promise<AdminLoyaltyCustomerListItem[]> {
   const response = await api.get('/admin/loyalty/customers', {
-    params: { search },
+    params: { search: search.trim() },
   });
-  return unwrap<AdminLoyaltyCustomerListItem[]>(response);
+  return normalizeCustomerSearchResponse(response.data);
 }
 
 export async function getAdminCustomerLoyaltyRequest(
