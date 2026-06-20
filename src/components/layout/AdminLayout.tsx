@@ -11,6 +11,7 @@ import {
   Store,
   MapPin,
   Tag,
+  Gift,
   Menu,
   X,
   LogOut,
@@ -41,6 +42,7 @@ export function AdminLayout() {
     ] : []),
     ...(canManageStore ? [{ to: '/admin/store', label: 'Loja', icon: <Store size={18} />, end: false }] : []),
     ...(canManageZones ? [{ to: '/admin/delivery-zones', label: 'Zonas de entrega', icon: <MapPin size={18} />, end: false }] : []),
+    ...(canManageProducts ? [{ to: '/admin/loyalty', label: 'Fidelidade', icon: <Gift size={18} />, end: false }] : []),
     { to: '/admin/customers', label: 'Clientes', icon: <Users size={18} /> },
     ...(isAdmin ? [{ to: '/admin/users', label: 'Usuários', icon: <UserCog size={18} />, end: false }] : []),
   ];

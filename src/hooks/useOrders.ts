@@ -36,5 +36,11 @@ export function useOrders() {
     }
   }
 
-  return { orders, selectedOrder, isLoading, error, loadMyOrders, loadOrderById };
+  function mergeOrderDetail(detail: Order) {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === detail.id ? { ...o, ...detail } : o)),
+    );
+  }
+
+  return { orders, selectedOrder, isLoading, error, loadMyOrders, loadOrderById, mergeOrderDetail };
 }

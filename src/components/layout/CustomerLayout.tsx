@@ -1,9 +1,33 @@
+import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { Toast } from '@/components/ui/Toast';
+import { useAuthStore } from '@/store/auth.store';
+import { useLoyaltyStore } from '@/store/loyalty.store';
+import { getMyLoyaltyRequest } from '@/services/loyalty.service';
 
 export function CustomerLayout() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setLoyalty = useLoyaltyStore((s) => s.set);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLoyalty({ isEnabled: false, availableRewards: 0 });
+      return;
+    }
+    getMyLoyaltyRequest()
+      .then((res) => {
+        setLoyalty({
+          isEnabled: res.settings.isEnabled,
+          availableRewards: res.card.availableRewards,
+        });
+      })
+      .catch(() => {
+        setLoyalty({ isEnabled: false });
+      });
+  }, [isAuthenticated, setLoyalty]);
+
   return (
     <>
       <div className="customer-layout">

@@ -7,6 +7,7 @@ import type { CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
 import { RegisterModal } from '@/features/auth/components/RegisterModal';
 import { Eye, EyeOff } from 'lucide-react';
+import { env } from '@/config/env';
 import acai1 from '@/assets/acai1.png';
 import acai12 from '@/assets/acai12.jpeg';
 
@@ -156,21 +157,23 @@ export function LoginPage() {
                 </button>
               </form>
 
-              {/* Divisor */}
-              <Divider label="ou continue com" />
-
-              {/* Google Login */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => clearError()}
-                  theme="filled_black"
-                  size="large"
-                  text="signin_with"
-                  shape="rectangular"
-                  width="360"
-                />
-              </div>
+              {/* Divisor + Google Login — só aparece se o client ID estiver configurado */}
+              {env.enableGoogleLogin && env.googleClientId && (
+                <>
+                  <Divider label="ou continue com" />
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10, overflow: 'hidden', width: '100%' }}>
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={() => clearError()}
+                      theme="filled_black"
+                      size="large"
+                      text="signin_with"
+                      shape="rectangular"
+                      width="340"
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Continuar sem cadastro */}
               <button

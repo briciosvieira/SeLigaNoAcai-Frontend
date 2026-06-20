@@ -1,17 +1,19 @@
-import { useEffect } from 'react';
 import type { Store } from '@/types/store.types';
 import { useAdminStoreAvailability } from '@/hooks/useAdminStoreAvailability';
 import { useStoreAvailabilityCountdown } from '@/hooks/useStoreAvailabilityCountdown';
 import { formatRemainingTime } from '@/utils/time';
+import '@/styles/store-availability.css';
 
 type AdminStoreAvailabilityPanelProps = {
   store: Store | null;
   onStoreUpdated: (store: Store) => void;
+  onReloadStore?: () => void;
 };
 
 export function AdminStoreAvailabilityPanel({
   store,
   onStoreUpdated,
+  onReloadStore,
 }: AdminStoreAvailabilityPanelProps) {
   const {
     durationOptions,
@@ -31,24 +33,23 @@ export function AdminStoreAvailabilityPanel({
     onStoreUpdated,
   });
 
+  // When countdown hits 0, ask the parent to reload store from the API
   const remainingSeconds = useStoreAvailabilityCountdown(
-    store?.availability?.remainingSeconds ?? 0
+    store?.availability?.remainingSeconds ?? 0,
+    onReloadStore,
   );
 
-  useEffect(() => {
-    if (remainingSeconds === 0 && store?.availability?.availabilityUntil) {
-      onStoreUpdated(store);
-    }
-  }, [remainingSeconds, store?.availability?.availabilityUntil, store, onStoreUpdated]);
-
   const isOpen = Boolean(store?.availability?.isOpen ?? store?.isOpen);
+  const nextLabel = store?.availability?.nextLabel ?? null;
 
   return (
     <section className="admin-store-availability-panel">
       <div className="admin-store-availability-top">
         <div>
           <h2 className="admin-store-availability-title">Funcionamento da loja</h2>
-          <p className="admin-store-availability-description">Controle se a loja está aberta ou fechada para pedidos.</p>
+          <p className="admin-store-availability-description">
+            Controle se a loja está aberta ou fechada para pedidos.
+          </p>
         </div>
 
         <div
@@ -58,16 +59,16 @@ export function AdminStoreAvailabilityPanel({
           ].join(' ')}
         >
           <span className="admin-store-status-dot" />
-          <strong>{isOpen ? 'Aberto' : 'Fechado'}</strong>
+          <div>
+            <strong>{isOpen ? 'Aberto' : 'Fechado'}</strong>
+            {nextLabel && remainingSeconds > 0 && (
+              <span className="admin-store-status-hint">
+                {nextLabel} {formatRemainingTime(remainingSeconds)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
-
-      {remainingSeconds > 0 ? (
-        <p className="admin-store-availability-timer">
-          {store?.availability?.nextLabel}{' '}
-          {formatRemainingTime(remainingSeconds)}
-        </p>
-      ) : null}
 
       <div className="admin-store-availability-form">
         <label className="admin-store-availability-field">
@@ -114,7 +115,7 @@ export function AdminStoreAvailabilityPanel({
         )}
 
         <p className="admin-store-availability-helper">
-          Tempo selecionado: {effectiveMinutes || 0} minuto(s)
+          Em {effectiveMinutes || 0} minuto(s) o status vai mudar.
         </p>
       </div>
 

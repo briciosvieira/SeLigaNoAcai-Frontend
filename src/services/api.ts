@@ -19,11 +19,15 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      useAuthStore.getState().clearAuth();
-      // redireciona sem depender do React Router
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const token = useAuthStore.getState().accessToken;
+      if (token) {
+        // Havia token mas está inválido/expirado → limpa sessão e redireciona
+        useAuthStore.getState().clearAuth();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
+      // Sem token: guest acessou endpoint protegido → deixa o erro propagar
     }
     return Promise.reject(error);
   },

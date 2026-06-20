@@ -16,11 +16,18 @@ interface Props {
 export function AdminProductVariants({ productId, variants, canManage, onCreate, onUpdate, onDelete }: Props) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newForm, setNewForm] = useState({ name: '', price: '', isActive: true, sortOrder: '' });
-  const [editForm, setEditForm] = useState({ name: '', price: '', isActive: true, sortOrder: '' });
+  const [newForm, setNewForm] = useState({ name: '', price: '', isActive: true });
+  const [editForm, setEditForm] = useState({ name: '', price: '', isActive: true });
   const [isSaving, setIsSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  function parseBRLToNumber(value: string | number): number {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const normalized = value.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
 
   function startEdit(v: ProductVariant) {
     setEditingId(v.id);
@@ -28,7 +35,6 @@ export function AdminProductVariants({ productId, variants, canManage, onCreate,
       name: v.name,
       price: String(v.price),
       isActive: v.isActive,
-      sortOrder: v.sortOrder != null ? String(v.sortOrder) : '',
     });
     setFormError(null);
     setIsAdding(false);
@@ -41,15 +47,15 @@ export function AdminProductVariants({ productId, variants, canManage, onCreate,
 
   function startAdd() {
     setIsAdding(true);
-    setNewForm({ name: '', price: '', isActive: true, sortOrder: '' });
+    setNewForm({ name: '', price: '', isActive: true });
     setEditingId(null);
     setFormError(null);
   }
 
   async function handleCreate() {
     if (!newForm.name.trim()) { setFormError('Nome é obrigatório.'); return; }
-    const price = parseFloat(newForm.price.replace(',', '.'));
-    if (!newForm.price || isNaN(price)) { setFormError('Preço inválido.'); return; }
+    const price = parseBRLToNumber(newForm.price);
+    if (!newForm.price || price < 0) { setFormError('Preço inválido.'); return; }
     setIsSaving(true);
     setFormError(null);
     try {
@@ -57,10 +63,9 @@ export function AdminProductVariants({ productId, variants, canManage, onCreate,
         name: newForm.name.trim(),
         price,
         isActive: newForm.isActive,
-        sortOrder: newForm.sortOrder ? parseInt(newForm.sortOrder) : 0,
       });
       setIsAdding(false);
-      setNewForm({ name: '', price: '', isActive: true, sortOrder: '' });
+      setNewForm({ name: '', price: '', isActive: true });
     } catch (err) {
       setFormError(getErrorMessage(err));
     } finally {
@@ -70,8 +75,8 @@ export function AdminProductVariants({ productId, variants, canManage, onCreate,
 
   async function handleUpdate(variantId: string) {
     if (!editForm.name.trim()) { setFormError('Nome é obrigatório.'); return; }
-    const price = parseFloat(editForm.price.replace(',', '.'));
-    if (!editForm.price || isNaN(price)) { setFormError('Preço inválido.'); return; }
+    const price = parseBRLToNumber(editForm.price);
+    if (!editForm.price || price < 0) { setFormError('Preço inválido.'); return; }
     setIsSaving(true);
     setFormError(null);
     try {
@@ -79,7 +84,6 @@ export function AdminProductVariants({ productId, variants, canManage, onCreate,
         name: editForm.name.trim(),
         price,
         isActive: editForm.isActive,
-        sortOrder: editForm.sortOrder ? parseInt(editForm.sortOrder) : 0,
       });
       setEditingId(null);
     } catch (err) {
@@ -170,7 +174,7 @@ export function AdminProductVariants({ productId, variants, canManage, onCreate,
   );
 }
 
-type VariantForm = { name: string; price: string; isActive: boolean; sortOrder: string };
+type VariantForm = { name: string; price: string; isActive: boolean };
 
 function VariantEditRow({
   form, onChange, onSave, onCancel, isSaving, isNew,
@@ -189,18 +193,14 @@ function VariantEditRow({
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
         <div>
-          <label style={labelStyle}>Nome *</label>
+          <label style={labelStyle}>Nome da variação *</label>
           <input className="pv-input" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })} placeholder="Ex: 300ml" />
         </div>
         <div>
           <label style={labelStyle}>Preço (R$) *</label>
           <input className="pv-input" value={form.price} onChange={(e) => onChange({ ...form, price: e.target.value })} placeholder="0,00" inputMode="decimal" />
         </div>
-        <div>
-          <label style={labelStyle}>Ordem</label>
-          <input className="pv-input" type="number" value={form.sortOrder} onChange={(e) => onChange({ ...form, sortOrder: e.target.value })} placeholder="0" />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
+        <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', paddingTop: 2 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.82rem' }}>
             <input type="checkbox" checked={form.isActive} onChange={(e) => onChange({ ...form, isActive: e.target.checked })} style={{ accentColor: 'var(--roxo-v)', width: 15, height: 15 }} />
             Ativo

@@ -1,9 +1,35 @@
 import { useState, useMemo } from 'react';
 import { getProductByIdRequest, getProductVariantsRequest, getProductOptionGroupsRequest } from '@/services/catalog.service';
-import { validateSelectedOptions } from '@/utils/options-validation.util';
-import { calculateOptionsTotal } from '@/utils/cart-pricing.util';
-import type { Product, ProductVariant, OptionGroup } from '@/types/product.types';
+import type { Product, ProductVariant, OptionGroup, ProductOption } from '@/types/product.types';
 import type { CartItem, CartItemOption } from '@/types/cart.types';
+
+export type SelectedProductOption = {
+  optionGroupId: string;
+  optionId: string;
+  groupName: string;
+  optionName: string;
+  additionalPrice: number;
+};
+
+export function getGroupOptions(group: any): any[] {
+  if (Array.isArray(group?.options)) return group.options;
+  if (Array.isArray(group?.productOptions)) return group.productOptions;
+  if (Array.isArray(group?.items)) return group.items;
+  return [];
+}
+
+export function getGroupMinSelected(group: any): number {
+  const rawValue = group?.minSelected ?? group?.minSelections ?? group?.minimumSelected ?? group?.min ?? 0;
+  const value = Number(rawValue);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+export function getGroupMaxSelected(group: any, optionsCount: number): number {
+  const rawValue = group?.maxSelected ?? group?.maxSelections ?? group?.maximumSelected ?? group?.max;
+  const value = Number(rawValue);
+  if (Number.isFinite(value) && value > 0) return value;
+  return optionsCount;
+}
 
 export function useProductBuilder() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +37,7 @@ export function useProductBuilder() {
   const [variants, setVariants] = useState<ProductVariant[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-  const [selectedOptionsByGroup, setSelectedOptionsByGroup] = useState<Record<string, string[]>>({});
+  const [selectedOptions, setSelectedOptions] = useState<SelectedProductOption[]>([]);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +48,7 @@ export function useProductBuilder() {
     setProduct(null);
     setVariants([]);
     setOptionGroups([]);
-    setSelectedOptionsByGroup({});
+    setSelectedOptions([]);
     setSelectedVariantId(null);
     setQuantity(1);
     setNotes('');
@@ -49,29 +75,72 @@ export function useProductBuilder() {
     setProduct(null);
     setVariants([]);
     setOptionGroups([]);
-    setSelectedOptionsByGroup({});
+    setSelectedOptions([]);
   }
 
-  function toggleOption(groupId: string, optionId: string, maxSelected: number) {
-    setSelectedOptionsByGroup((prev) => {
-      const current = prev[groupId] ?? [];
-      if (current.includes(optionId)) {
-        return { ...prev, [groupId]: current.filter((id) => id !== optionId) };
+  function toggleOption(group: OptionGroup, option: ProductOption) {
+    const groupId = String(group.id);
+    const optionId = String(option.id);
+
+    const groupName = group.name ?? 'Grupo';
+    const optionName = option.name ?? 'Opção';
+
+    const options = getGroupOptions(group);
+    const maxSelected = getGroupMaxSelected(group, options.length);
+
+    const additionalPrice = Number(option.additionalPrice ?? option.price ?? 0);
+
+    setSelectedOptions((current) => {
+      const alreadySelected = current.some(
+        (selected) => selected.optionGroupId === groupId && selected.optionId === optionId
+      );
+
+      if (alreadySelected) {
+        return current.filter(
+          (selected) => !(selected.optionGroupId === groupId && selected.optionId === optionId)
+        );
       }
+
+      const selectedInGroup = current.filter((selected) => selected.optionGroupId === groupId);
+
+      const newOption = {
+        optionGroupId: groupId,
+        optionId,
+        groupName,
+        optionName,
+        additionalPrice: Number.isFinite(additionalPrice) ? additionalPrice : 0,
+      };
+
       if (maxSelected === 1) {
-        return { ...prev, [groupId]: [optionId] };
+        return [...current.filter((selected) => selected.optionGroupId !== groupId), newOption];
       }
-      if (current.length >= maxSelected) {
-        return prev;
+
+      if (selectedInGroup.length >= maxSelected) {
+        return current;
       }
-      return { ...prev, [groupId]: [...current, optionId] };
+
+      return [...current, newOption];
     });
   }
 
-  const validationError = useMemo(
-    () => validateSelectedOptions(optionGroups, selectedOptionsByGroup),
-    [optionGroups, selectedOptionsByGroup],
-  );
+  const validationError = useMemo(() => {
+    const activeVariants = variants.filter((v) => v.isActive);
+    if (activeVariants.length > 0 && !selectedVariantId) {
+      return 'Escolha o tamanho antes de continuar.';
+    }
+
+    for (const group of optionGroups) {
+      const minSelected = getGroupMinSelected(group);
+      if (minSelected <= 0) continue;
+
+      const selectedInGroup = selectedOptions.filter((s) => s.optionGroupId === String(group.id));
+      if (selectedInGroup.length < minSelected) {
+        return `Escolha pelo menos ${minSelected} opção(ões) em "${group.name}".`;
+      }
+    }
+
+    return null;
+  }, [variants, selectedVariantId, optionGroups, selectedOptions]);
 
   const basePrice = useMemo(() => {
     if (selectedVariantId) {
@@ -82,8 +151,8 @@ export function useProductBuilder() {
   }, [selectedVariantId, variants, product]);
 
   const optionsTotal = useMemo(
-    () => calculateOptionsTotal(optionGroups, selectedOptionsByGroup),
-    [optionGroups, selectedOptionsByGroup],
+    () => selectedOptions.reduce((acc, opt) => acc + opt.additionalPrice, 0),
+    [selectedOptions],
   );
 
   const unitPrice = basePrice + optionsTotal;
@@ -92,21 +161,13 @@ export function useProductBuilder() {
   function buildCartItem(): CartItem | null {
     if (!product) return null;
 
-    const selectedOptions: CartItemOption[] = [];
-    for (const group of optionGroups) {
-      const selectedIds = selectedOptionsByGroup[group.id] ?? [];
-      for (const option of group.options ?? []) {
-        if (selectedIds.includes(option.id)) {
-          selectedOptions.push({
-            optionGroupId: group.id,
-            optionGroupName: group.name,
-            optionId: option.id,
-            optionName: option.name,
-            additionalPrice: Number(option.additionalPrice ?? 0),
-          });
-        }
-      }
-    }
+    const cartItemOptions: CartItemOption[] = selectedOptions.map(opt => ({
+      optionGroupId: opt.optionGroupId,
+      optionGroupName: opt.groupName,
+      optionId: opt.optionId,
+      optionName: opt.optionName,
+      additionalPrice: opt.additionalPrice,
+    }));
 
     const selectedVariant = variants.find((v) => v.id === selectedVariantId);
 
@@ -122,7 +183,7 @@ export function useProductBuilder() {
       optionsTotal,
       unitPrice,
       totalAmount: totalPrice,
-      selectedOptions,
+      selectedOptions: cartItemOptions,
       notes: notes.trim() || undefined,
     };
   }
@@ -134,7 +195,7 @@ export function useProductBuilder() {
     optionGroups,
     selectedVariantId,
     setSelectedVariantId,
-    selectedOptionsByGroup,
+    selectedOptions,
     toggleOption,
     quantity,
     setQuantity,

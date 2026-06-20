@@ -1,7 +1,9 @@
 export type StoreAvailability = {
   isOpen: boolean;
   label: 'Aberto' | 'Fechado';
-  nextLabel: 'Fecha em' | 'Abre em';
+  nextLabel: 'Fecha em' | 'Abre em' | null;
+  scheduledIsOpen?: boolean | null;
+  availabilityChangeAt?: string | null;
   availabilityUntil?: string | null;
   availabilityUpdatedAt?: string | null;
   remainingSeconds: number;
@@ -32,6 +34,8 @@ export type Store = {
   minimumOrderAmount: string;
   isActive: boolean;
   isOpen?: boolean;
+  scheduledIsOpen?: boolean | null;
+  availabilityChangeAt?: string | null;
   availabilityUntil?: string | null;
   availabilityUpdatedAt?: string | null;
   availability?: StoreAvailability;

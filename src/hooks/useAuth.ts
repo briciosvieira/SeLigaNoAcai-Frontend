@@ -9,6 +9,7 @@ import {
   registerRequest,
 } from '@/services/auth.service';
 import { useAuthStore } from '@/store/auth.store';
+import { getApiErrorMessage } from '@/utils/api-error.util';
 import type {
   ChangeMyPasswordPayload,
   LoginPayload,
@@ -46,10 +47,7 @@ export function useAuth() {
       redirectAfterLogin(navigate, auth);
       return auth;
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'E-mail ou senha incorretos';
-      setError(msg);
+      setError(getApiErrorMessage(err));
       throw err;
     } finally {
       setIsLoading(false);
@@ -65,10 +63,7 @@ export function useAuth() {
       redirectAfterLogin(navigate, auth);
       return auth;
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro no login com Google';
-      setError(msg);
+      setError(getApiErrorMessage(err));
       throw err;
     } finally {
       setIsLoading(false);
@@ -84,10 +79,7 @@ export function useAuth() {
       navigate('/', { replace: true });
       return auth;
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao criar conta';
-      setError(msg);
+      setError(getApiErrorMessage(err));
       throw err;
     } finally {
       setIsLoading(false);
@@ -110,10 +102,7 @@ export function useAuth() {
     try {
       return await changeMyPasswordRequest(payload);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao alterar senha';
-      setError(msg);
+      setError(getApiErrorMessage(err));
       throw err;
     } finally {
       setIsLoading(false);

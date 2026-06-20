@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { QrCode, CreditCard, Banknote, CheckCircle, MapPin, Store, X } from 'lucide-react';
-import { useCheckout } from '@/hooks/useCheckout';
+import { QrCode, CreditCard, Banknote, CheckCircle, MapPin, Store, X, RefreshCw } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
+import { useCheckout, PICKUP_ZONE_ID } from '@/hooks/useCheckout';
 import { useLocationStore } from '@/store/location.store';
 import { formatCurrency } from '@/utils/currency.util';
+import { resolvePixQrImageSrc } from '@/utils/pix';
 import '@/styles/checkout-flow.css';
 
 interface Props {
@@ -27,6 +29,7 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
   const checkout = useCheckout(onClose, promotionalTotal);
   const selectedDeliveryZone = useLocationStore((s) => s.selectedDeliveryZone);
   const [pixCopied, setPixCopied] = useState(false);
+  const [qrImageFailed, setQrImageFailed] = useState(false);
 
   const finalTotal = checkout.getFinalTotal();
   const deliveryFee = Number(selectedDeliveryZone?.deliveryFee ?? 0);
@@ -41,6 +44,7 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
   }
 
   function handleCopyPix(text: string) {
+    if (!text) return;
     void navigator.clipboard
       .writeText(text)
       .then(() => {
@@ -61,7 +65,11 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
     <div className="checkout-modal-overlay" onClick={handleOverlayClick}>
       <div className="checkout-modal">
         <div className="checkout-modal-header">
-          <h2 className="checkout-modal-title">{STEP_TITLES[checkout.step]}</h2>
+          <h2 className="checkout-modal-title">
+            {checkout.step === 'DELIVERY_INFO' && checkout.isPickup
+              ? 'Dados para retirada'
+              : STEP_TITLES[checkout.step]}
+          </h2>
           {canClose && (
             <button type="button" className="checkout-close-button" onClick={onClose}>
               <X size={18} />
@@ -110,15 +118,6 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
             </span>
             <span>{formatCurrency(finalTotal)}</span>
           </div>
-
-          <button
-            type="button"
-            className="checkout-pickup-link"
-            onClick={checkout.selectPickup}
-          >
-            <Store size={14} style={{ flexShrink: 0 }} />
-            Prefiro retirar na loja
-          </button>
         </div>
 
         <div className="checkout-modal-footer">
@@ -171,19 +170,22 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
           {!checkout.isLoadingZones && !checkout.zoneError && (
             <>
               <div>
-                <label className="checkout-label">Selecione seu bairro</label>
+                <label className="checkout-label">Selecione o bairro ou retirada</label>
                 <select
                   className="checkout-select"
                   value={checkout.pendingZoneId}
                   onChange={(e) => checkout.setPendingZoneId(e.target.value)}
                 >
-                  <option value="">— Escolha um bairro —</option>
+                  <option value="">— Escolha uma opção —</option>
+                  <option value={PICKUP_ZONE_ID}>
+                    🏪 Retirada na loja — Itapuã · Grátis
+                  </option>
                   {checkout.deliveryZones.map((z) => (
                     <option key={z.id} value={z.id}>
                       {z.neighborhood}
                       {z.city ? ` — ${z.city}` : ''}
                       {Number(z.deliveryFee) === 0
-                        ? ' (Grátis)'
+                        ? ' · Grátis'
                         : ` · ${formatCurrency(Number(z.deliveryFee))}`}
                     </option>
                   ))}
@@ -199,15 +201,6 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
               </button>
             </>
           )}
-
-          <button
-            type="button"
-            className="checkout-pickup-link"
-            onClick={checkout.selectPickup}
-          >
-            <Store size={14} style={{ flexShrink: 0 }} />
-            Prefiro retirar na loja
-          </button>
         </div>
 
         <div className="checkout-modal-footer">
@@ -382,15 +375,25 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
   function renderDeliveryInfo() {
     const e = checkout.deliveryInfoErrors;
     const isAuth = checkout.isAuthenticated;
+    const isPickup = checkout.isPickup;
+
+    const selectedZoneInForm = !isPickup && checkout.pendingZoneId
+      ? checkout.deliveryZones.find((z) => z.id === checkout.pendingZoneId)
+      : null;
+    const feeInForm = Number(selectedZoneInForm?.deliveryFee ?? 0);
 
     return (
       <>
         <div className="checkout-modal-body">
-          {isAuth && (
+          {isPickup ? (
+            <p className="checkout-info-message" style={{ fontSize: 13 }}>
+              Precisamos do seu nome e telefone para confirmar a retirada na loja.
+            </p>
+          ) : isAuth ? (
             <p className="checkout-info-message" style={{ fontSize: 13 }}>
               Dados do cadastro pré-preenchidos. Informe o endereço de entrega.
             </p>
-          )}
+          ) : null}
 
           <div>
             <label className="checkout-label">Nome completo *</label>
@@ -399,7 +402,7 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
               className="checkout-input"
               placeholder="Seu nome completo"
               value={checkout.customerFullName}
-              onChange={(e) => checkout.setCustomerFullName(e.target.value)}
+              onChange={(ev) => checkout.setCustomerFullName(ev.target.value)}
               autoComplete="name"
             />
             {e.fullName && <p className="checkout-field-error">{e.fullName}</p>}
@@ -412,59 +415,91 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
               className="checkout-input"
               placeholder="(00) 00000-0000"
               value={checkout.customerPhone}
-              onChange={(e) => checkout.setCustomerPhone(e.target.value)}
+              onChange={(ev) => checkout.setCustomerPhone(ev.target.value)}
               autoComplete="tel"
             />
             {e.phone && <p className="checkout-field-error">{e.phone}</p>}
           </div>
 
-          <div className="checkout-address-row">
-            <div>
-              <label className="checkout-label">Rua / Avenida *</label>
-              <input
-                type="text"
-                className="checkout-input"
-                placeholder="Nome da rua ou avenida"
-                value={checkout.addressStreet}
-                onChange={(e) => checkout.setAddressStreet(e.target.value)}
-                autoComplete="street-address"
-              />
-              {e.street && <p className="checkout-field-error">{e.street}</p>}
-            </div>
-            <div>
-              <label className="checkout-label">Número *</label>
-              <input
-                type="text"
-                className="checkout-input"
-                placeholder="Nº"
-                value={checkout.addressNumber}
-                onChange={(e) => checkout.setAddressNumber(e.target.value)}
-              />
-              {e.number && <p className="checkout-field-error">{e.number}</p>}
-            </div>
-          </div>
+          {!isPickup && (
+            <>
+              <div>
+                <label className="checkout-label">Bairro / zona de entrega *</label>
+                <select
+                  className="checkout-select"
+                  value={checkout.pendingZoneId}
+                  onChange={(ev) => checkout.setPendingZoneId(ev.target.value)}
+                >
+                  <option value="">Selecione seu bairro</option>
+                  {checkout.deliveryZones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.neighborhood}
+                      {z.city ? ` — ${z.city}` : ''}
+                      {Number(z.deliveryFee) === 0
+                        ? ' · Grátis'
+                        : ` · ${formatCurrency(Number(z.deliveryFee))}`}
+                    </option>
+                  ))}
+                </select>
+                {e.deliveryZoneId && <p className="checkout-field-error">{e.deliveryZoneId}</p>}
+              </div>
 
-          <div>
-            <label className="checkout-label">Complemento</label>
-            <input
-              type="text"
-              className="checkout-input"
-              placeholder="Apto, bloco, casa… (opcional)"
-              value={checkout.addressComplement}
-              onChange={(e) => checkout.setAddressComplement(e.target.value)}
-            />
-          </div>
+              {selectedZoneInForm && (
+                <div className="checkout-delivery-fee-box">
+                  <span>Taxa de entrega</span>
+                  <strong>{feeInForm === 0 ? 'Grátis' : formatCurrency(feeInForm)}</strong>
+                </div>
+              )}
 
-          <div>
-            <label className="checkout-label">Ponto de referência</label>
-            <input
-              type="text"
-              className="checkout-input"
-              placeholder="Ex: próximo ao mercado (opcional)"
-              value={checkout.addressReference}
-              onChange={(e) => checkout.setAddressReference(e.target.value)}
-            />
-          </div>
+              <div className="checkout-address-row">
+                <div>
+                  <label className="checkout-label">Rua / Avenida *</label>
+                  <input
+                    type="text"
+                    className="checkout-input"
+                    placeholder="Nome da rua ou avenida"
+                    value={checkout.addressStreet}
+                    onChange={(ev) => checkout.setAddressStreet(ev.target.value)}
+                    autoComplete="street-address"
+                  />
+                  {e.street && <p className="checkout-field-error">{e.street}</p>}
+                </div>
+                <div>
+                  <label className="checkout-label">Número *</label>
+                  <input
+                    type="text"
+                    className="checkout-input"
+                    placeholder="Nº"
+                    value={checkout.addressNumber}
+                    onChange={(ev) => checkout.setAddressNumber(ev.target.value)}
+                  />
+                  {e.number && <p className="checkout-field-error">{e.number}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label className="checkout-label">Complemento</label>
+                <input
+                  type="text"
+                  className="checkout-input"
+                  placeholder="Apto, bloco, casa… (opcional)"
+                  value={checkout.addressComplement}
+                  onChange={(ev) => checkout.setAddressComplement(ev.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="checkout-label">Ponto de referência</label>
+                <input
+                  type="text"
+                  className="checkout-input"
+                  placeholder="Ex: próximo ao mercado (opcional)"
+                  value={checkout.addressReference}
+                  onChange={(ev) => checkout.setAddressReference(ev.target.value)}
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="checkout-modal-footer">
@@ -705,16 +740,10 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
 
   /* ── PIX_PENDING ── */
   function renderPixPending() {
-    const { createdOrder, pixPayment, isLoadingPix } = checkout;
+    const { createdOrder, pixData, isLoadingPix, pixError, retryPix } = checkout;
 
-    let qrSrc: string | null = null;
-    if (pixPayment?.pixQrCode) {
-      const raw = pixPayment.pixQrCode;
-      qrSrc =
-        raw.startsWith('data:') || raw.startsWith('http')
-          ? raw
-          : `data:image/png;base64,${raw}`;
-    }
+    const qrImageSrc = resolvePixQrImageSrc(pixData);
+    const hasCode = Boolean(pixData.copyPasteCode);
 
     return (
       <>
@@ -725,47 +754,70 @@ export function CheckoutFlowModal({ onClose, promotionalTotal }: Props) {
             </p>
           )}
 
-          {isLoadingPix && <p className="checkout-spinner">Gerando QR Code PIX…</p>}
-
-          {!isLoadingPix && qrSrc && (
-            <div className="checkout-pix-box">
-              <img src={qrSrc} alt="QR Code PIX" className="checkout-pix-qrcode" />
-
-              {pixPayment?.pixCopyPaste && (
-                <div className="checkout-pix-copy">
-                  <p className="checkout-label">Pix Copia e Cola</p>
-                  <div className="checkout-pix-copy-row">
-                    <p className="checkout-pix-code">{pixPayment.pixCopyPaste}</p>
-                    <button
-                      type="button"
-                      className="checkout-secondary-button"
-                      style={{ flexShrink: 0 }}
-                      onClick={() => handleCopyPix(pixPayment.pixCopyPaste!)}
-                    >
-                      {pixCopied ? 'Copiado!' : 'Copiar'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {pixPayment?.pixExpiresAt && (
-                <p className="checkout-info-message" style={{ textAlign: 'center', fontSize: 13 }}>
-                  Expira em:{' '}
-                  {new Date(pixPayment.pixExpiresAt).toLocaleString('pt-BR')}
-                </p>
-              )}
+          {isLoadingPix && (
+            <div className="checkout-pix-loading">
+              <div className="checkout-spinner-ring" />
+              <p className="checkout-pix-loading-text">Gerando PIX…</p>
             </div>
           )}
 
-          {!isLoadingPix && !qrSrc && (
-            <div className="checkout-success-box">
-              <CheckCircle size={52} className="checkout-success-icon" />
-              <p style={{ fontWeight: 800, fontSize: 17, margin: 0 }}>Pedido criado!</p>
-              <p className="checkout-info-message" style={{ textAlign: 'center' }}>
-                O QR Code PIX será disponibilizado em breve.
-                <br />
-                Acompanhe em Meus Pedidos.
-              </p>
+          {!isLoadingPix && pixError && !hasCode && (
+            <div className="checkout-pix-error-box">
+              <p className="checkout-pix-error-text">{pixError}</p>
+              <button
+                type="button"
+                className="checkout-secondary-button"
+                onClick={retryPix}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <RefreshCw size={15} />
+                Tentar novamente
+              </button>
+            </div>
+          )}
+
+          {!isLoadingPix && hasCode && (
+            <div className="checkout-pix-box">
+              <div className="checkout-pix-qr-frame">
+                {qrImageSrc && !qrImageFailed ? (
+                  <img
+                    src={qrImageSrc}
+                    alt="QR Code PIX"
+                    className="checkout-pix-qr-image"
+                    onError={() => setQrImageFailed(true)}
+                  />
+                ) : (
+                  <QRCodeCanvas
+                    value={pixData.copyPasteCode}
+                    size={220}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                  />
+                )}
+              </div>
+
+              <div className="checkout-pix-copy">
+                <p className="checkout-label">Pix Copia e Cola</p>
+                <div className="checkout-pix-copy-row">
+                  <p className="checkout-pix-code">{pixData.copyPasteCode}</p>
+                  <button
+                    type="button"
+                    className="checkout-secondary-button"
+                    style={{ flexShrink: 0 }}
+                    disabled={!hasCode}
+                    onClick={() => handleCopyPix(pixData.copyPasteCode)}
+                  >
+                    {pixCopied ? 'Copiado!' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
+
+              {pixData.expiresAt && (
+                <p className="checkout-info-message" style={{ textAlign: 'center', fontSize: 13 }}>
+                  Expira em:{' '}
+                  {new Date(pixData.expiresAt).toLocaleString('pt-BR')}
+                </p>
+              )}
             </div>
           )}
         </div>

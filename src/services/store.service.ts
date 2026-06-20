@@ -87,7 +87,8 @@ export async function getStoreAvailabilityDurationOptionsRequest(): Promise<Stor
 
 export async function updateCurrentStoreAvailabilityRequest(payload: UpdateStoreAvailabilityPayload): Promise<Store> {
   const response = await api.patch('/store/current/availability', payload);
-  return unwrapResponseData<Store>(response);
+  const responsePayload = unwrapResponseData<any>(response);
+  return normalizeCurrentStorePayload(responsePayload);
 }
 
 export async function deleteStoreRequest(id: string): Promise<void> {

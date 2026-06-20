@@ -2,7 +2,7 @@ import type { AdminPermission, UserRole } from './admin.types';
 
 export type AuthUser = {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   phone?: string;
   role: UserRole;
@@ -23,9 +23,9 @@ export type LoginPayload = {
 };
 
 export type RegisterPayload = {
-  name: string;
+  fullName: string;
   email: string;
-  phone: string;
+  phone?: string;
   password: string;
 };
 

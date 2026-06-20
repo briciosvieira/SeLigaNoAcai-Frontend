@@ -403,7 +403,6 @@ function GroupFormModal({ group, isSaving, onClose, onCreate, onUpdate }: {
 }) {
   const isEdit = group != null;
   const [name, setName] = useState(group?.name ?? '');
-  const [description, setDescription] = useState(group?.description ?? '');
   const [minSelected, setMinSelected] = useState(String(group?.minSelected ?? 0));
   const [maxSelected, setMaxSelected] = useState(String(group?.maxSelected ?? 1));
   const [isRequired, setIsRequired] = useState(group?.isRequired ?? false);
@@ -421,14 +420,12 @@ function GroupFormModal({ group, isSaving, onClose, onCreate, onUpdate }: {
       setFormError('Valores de mínimo/máximo inválidos.'); return;
     }
 
+    // isRequired controla apenas minSelected — não enviado ao backend
+    const effectiveMin = isRequired ? Math.max(1, min) : min;
     const payload: CreateOptionGroupPayload = {
       name: name.trim(),
-      slug: generateSlug(name.trim()),
-      selectionType: max === 1 ? 'SINGLE' : 'MULTIPLE',
-      description: description.trim() || null,
-      minSelected: min,
+      minSelected: effectiveMin,
       maxSelected: max,
-      isRequired,
       isActive,
     };
 
@@ -460,9 +457,6 @@ function GroupFormModal({ group, isSaving, onClose, onCreate, onUpdate }: {
           )}
           <FField label="Nome *">
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Frutas" className="agf-input" />
-          </FField>
-          <FField label="Descrição">
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descrição opcional" className="agf-input" rows={2} style={{ resize: 'vertical' }} />
           </FField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FField label="Mín. escolhas">

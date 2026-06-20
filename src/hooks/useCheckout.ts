@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PICKUP_DELIVERY_ZONE_ID } from '@/constants/pickup.constants';
+
+// Re-exportado para o modal — agora é o UUID real da zona de retirada
+export const PICKUP_ZONE_ID = PICKUP_DELIVERY_ZONE_ID;
 import { getDeliveryZonesRequest } from '@/services/delivery-zones.service';
 import { getCurrentStoreRequest } from '@/services/store.service';
 import { createOrderRequest } from '@/services/orders.service';
-import { createPixPaymentRequest } from '@/services/payments.service';
+import {
+  createPixPaymentRequest,
+  getPaymentByOrderIdRequest,
+} from '@/services/payments.service';
 import {
   getMyDefaultAddressRequest,
   updateMeRequest,
@@ -12,6 +19,8 @@ import {
 import { useLocationStore } from '@/store/location.store';
 import { useCartStore } from '@/store/cart.store';
 import { useAuthStore } from '@/store/auth.store';
+import { normalizePixPayload, EMPTY_PIX } from '@/utils/pix';
+import type { NormalizedPixPayload } from '@/utils/pix';
 import type { DeliveryZone } from '@/types/delivery-zone.types';
 import type { Store } from '@/types/store.types';
 import type {
@@ -19,8 +28,10 @@ import type {
   PaymentMethod,
   CreateOrderItem,
   CreateOrderPayload,
-  PixPaymentData,
 } from '@/types/order.types';
+
+const MAX_PIX_ATTEMPTS = 10;
+const PIX_RETRY_INTERVAL_MS = 1500;
 
 export type CheckoutStep =
   | 'CONFIRM_LOCATION'
@@ -43,7 +54,6 @@ function getApiErrorMessage(err: unknown): string {
   return 'Não foi possível processar o pedido. Verifique os dados e tente novamente.';
 }
 
-// Shape of the profile data loaded at checkout open (for change detection)
 type ProfileSnapshot = {
   name: string;
   phone: string;
@@ -67,7 +77,6 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     selectedDeliveryZone ? 'CONFIRM_LOCATION' : 'LOCATION_REQUIRED',
   );
 
-  // Delivery zones & store
   const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
   const [store, setStore] = useState<Store | null>(null);
   const [isLoadingZones, setIsLoadingZones] = useState(false);
@@ -76,13 +85,10 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     selectedDeliveryZone?.id ?? '',
   );
 
-  // Pickup flag
   const [isPickup, setIsPickup] = useState(false);
 
-  // Profile snapshot loaded on mount (for "did user change anything?" check)
   const [profileSnapshot, setProfileSnapshot] = useState<ProfileSnapshot | null>(null);
 
-  // Delivery info form
   const [customerFullName, setCustomerFullName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [addressStreet, setAddressStreet] = useState('');
@@ -91,28 +97,71 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
   const [addressReference, setAddressReference] = useState('');
   const [deliveryInfoErrors, setDeliveryInfoErrors] = useState<Record<string, string>>({});
 
-  // Payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [needsChange, setNeedsChange] = useState<boolean | null>(null);
   const [changeForAmount, setChangeForAmount] = useState<string>('');
   const [changeError, setChangeError] = useState<string | null>(null);
 
-  // Order
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [createdOrder, setCreatedOrder] = useState<Order | null>(null);
 
-  // PIX
-  const [pixPayment, setPixPayment] = useState<PixPaymentData | null>(null);
+  // PIX — uses normalized payload
+  const [pixData, setPixData] = useState<NormalizedPixPayload>(EMPTY_PIX);
   const [isLoadingPix, setIsLoadingPix] = useState(false);
+  const [pixError, setPixError] = useState<string | null>(null);
 
-  // Save-to-profile state
   const [isSavingToProfile, setIsSavingToProfile] = useState(false);
 
   useEffect(() => {
     void loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // PIX polling: runs when we have an order ID, no code yet, and we're on the PIX step
+  useEffect(() => {
+    const orderId = createdOrder?.id;
+    if (!orderId || pixData.copyPasteCode || step !== 'PIX_PENDING') return;
+
+    let cancelled = false;
+    let attempts = 0;
+    let timeoutId: number | undefined;
+
+    async function poll() {
+      if (cancelled) return;
+      attempts += 1;
+
+      try {
+        const payment = await getPaymentByOrderIdRequest(orderId);
+        const normalized = normalizePixPayload(payment);
+        if (normalized.copyPasteCode) {
+          if (!cancelled) {
+            setPixData(normalized);
+            setIsLoadingPix(false);
+          }
+          return;
+        }
+      } catch {
+        // ignora erros transientes, tenta novamente
+      }
+
+      if (cancelled) return;
+
+      if (attempts < MAX_PIX_ATTEMPTS) {
+        timeoutId = window.setTimeout(poll, PIX_RETRY_INTERVAL_MS);
+      } else {
+        setIsLoadingPix(false);
+        setPixError('Não conseguimos carregar o PIX automaticamente.');
+      }
+    }
+
+    void poll();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [createdOrder?.id, step, pixData.copyPasteCode]);
 
   async function loadData() {
     setIsLoadingZones(true);
@@ -126,7 +175,9 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
 
       let zones: DeliveryZone[] = [];
       if (zonesResult.status === 'fulfilled') {
-        zones = zonesResult.value.filter((z) => z.isAvailable);
+        zones = zonesResult.value
+          .filter((z) => z.isAvailable)
+          .filter((z) => z.id !== PICKUP_DELIVERY_ZONE_ID);
         setDeliveryZones(zones);
       } else {
         setZoneError('Erro ao carregar bairros. Tente novamente.');
@@ -136,13 +187,11 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
         setStore(storeResult.value);
       }
 
-      // Pre-fill from auth user
-      const name = user?.name ?? '';
+      const name = user?.fullName ?? '';
       const phone = user?.phone ?? '';
       setCustomerFullName(name);
       setCustomerPhone(phone);
 
-      // Pre-fill from saved profile address
       if (addressResult.status === 'fulfilled' && addressResult.value) {
         const addr = addressResult.value;
         const street = addr.street ?? '';
@@ -156,21 +205,17 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
         setAddressComplement(complement);
         setAddressReference(referencePoint);
 
-        // Save snapshot for change detection
         setProfileSnapshot({ name, phone, deliveryZoneId: zoneId, street, number, complement, referencePoint });
 
-        // Pre-fill zone if location store has none
         if (!selectedDeliveryZone && zoneId) {
           const zone = zones.find((z) => z.id === zoneId);
           if (zone) {
             setDeliveryZone(zone);
             setPendingZoneId(zone.id);
-            // Upgrade step to CONFIRM_LOCATION since we now have a zone
             setStep('CONFIRM_LOCATION');
           }
         }
       } else {
-        // No saved address — just snapshot the user fields
         setProfileSnapshot({ name, phone, deliveryZoneId: '', street: '', number: '', complement: '', referencePoint: '' });
       }
     } finally {
@@ -178,7 +223,6 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     }
   }
 
-  // True when ALL required delivery fields are already filled (profile data loaded)
   function computeHasCompleteAddress(zoneId: string): boolean {
     return Boolean(
       customerFullName.trim() &&
@@ -189,7 +233,6 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     );
   }
 
-  // Determine if the user changed anything compared to what was in the profile
   function computeProfileDataChanged(confirmedZoneId: string): boolean {
     if (!isAuthenticated || !profileSnapshot) return false;
     return (
@@ -204,7 +247,6 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
   }
 
   function goToPayment() {
-    // Called from CONFIRM_LOCATION "Continuar"
     setOrderError(null);
     setDeliveryInfoErrors({});
     const zoneId = selectedDeliveryZone?.id ?? '';
@@ -225,6 +267,11 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
   }
 
   function confirmZone() {
+    // Retirada na loja: trata como pickup sem zona real
+    if (pendingZoneId === PICKUP_ZONE_ID) {
+      selectPickup();
+      return;
+    }
     const zone = deliveryZones.find((z) => z.id === pendingZoneId);
     if (!zone) return;
     setDeliveryZone(zone);
@@ -240,16 +287,20 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
   function selectPickup() {
     setIsPickup(true);
     setOrderError(null);
-    setStep('PAYMENT_METHOD');
+    setDeliveryInfoErrors({});
+    // Se nome ou telefone não estiverem preenchidos, coleta antes de ir ao pagamento
+    if (!customerFullName.trim() || !customerPhone.trim()) {
+      setStep('DELIVERY_INFO');
+    } else {
+      setStep('PAYMENT_METHOD');
+    }
   }
 
-  // From CONFIRM_DELIVERY → "Confirmar e continuar" (no changes made)
   function confirmDeliveryAddress() {
     setOrderError(null);
     setStep('PAYMENT_METHOD');
   }
 
-  // From CONFIRM_DELIVERY → "Alterar dados"
   function goToEditDeliveryInfo() {
     setDeliveryInfoErrors({});
     setStep('DELIVERY_INFO');
@@ -257,6 +308,18 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
 
   function goBackFromDeliveryInfo() {
     setDeliveryInfoErrors({});
+    // Garante que pendingZoneId está sincronizado com o store ao sair do form
+    setPendingZoneId(selectedDeliveryZone?.id ?? '');
+    if (isPickup) {
+      // Voltando da coleta de dados de retirada → desfaz pickup e retorna à origem
+      setIsPickup(false);
+      if (selectedDeliveryZone) {
+        setStep('CONFIRM_LOCATION');
+      } else {
+        setStep('LOCATION_REQUIRED');
+      }
+      return;
+    }
     if (selectedDeliveryZone) {
       if (computeHasCompleteAddress(selectedDeliveryZone.id) && profileSnapshot) {
         setStep('CONFIRM_DELIVERY');
@@ -272,16 +335,34 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     const errors: Record<string, string> = {};
     if (!customerFullName.trim()) errors.fullName = 'Nome é obrigatório.';
     if (!customerPhone.trim()) errors.phone = 'Telefone é obrigatório.';
-    if (!addressStreet.trim()) errors.street = 'Rua / Avenida é obrigatória.';
-    if (!addressNumber.trim()) errors.number = 'Número é obrigatório.';
+
+    if (!isPickup) {
+      // Bairro é obrigatório para entrega — pode ter sido selecionado neste form
+      const effectiveZoneId = pendingZoneId || selectedDeliveryZone?.id || '';
+      if (!effectiveZoneId) errors.deliveryZoneId = 'Selecione seu bairro.';
+      if (!addressStreet.trim()) errors.street = 'Rua / Avenida é obrigatória.';
+      if (!addressNumber.trim()) errors.number = 'Número é obrigatório.';
+    }
+
     setDeliveryInfoErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setOrderError(null);
 
-    const zoneId = selectedDeliveryZone?.id ?? pendingZoneId;
-    // Prompt to save only when authenticated and data differs from profile
-    if (isAuthenticated && computeProfileDataChanged(zoneId)) {
+    if (isPickup) {
+      setStep('PAYMENT_METHOD');
+      return;
+    }
+
+    // Persiste bairro se o cliente o alterou neste form
+    const effectiveZoneId = pendingZoneId || selectedDeliveryZone?.id || '';
+    if (effectiveZoneId && effectiveZoneId !== selectedDeliveryZone?.id) {
+      const zone = deliveryZones.find((z) => z.id === effectiveZoneId);
+      if (zone) setDeliveryZone(zone);
+    }
+
+    const finalZoneId = effectiveZoneId;
+    if (isAuthenticated && computeProfileDataChanged(finalZoneId)) {
       setStep('SAVE_TO_PROFILE');
     } else {
       setStep('PAYMENT_METHOD');
@@ -292,7 +373,7 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     setIsSavingToProfile(true);
     try {
       await Promise.allSettled([
-        updateMeRequest({ name: customerFullName.trim(), phone: customerPhone.trim() }),
+        updateMeRequest({ fullName: customerFullName.trim(), phone: customerPhone.trim() }),
         selectedDeliveryZone
           ? upsertMyDefaultAddressRequest({
               deliveryZoneId: selectedDeliveryZone.id,
@@ -304,7 +385,7 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
           : Promise.resolve(),
       ]);
     } catch {
-      // Non-critical — don't block the order if save fails
+      // Non-critical
     } finally {
       setIsSavingToProfile(false);
       setStep('PAYMENT_METHOD');
@@ -410,7 +491,7 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
       paymentMethod: method,
       ...(change !== null ? { changeForAmount: change } : {}),
       ...(isPickup
-        ? { deliveryZoneId: null }
+        ? { deliveryZoneId: PICKUP_DELIVERY_ZONE_ID }
         : {
             address: {
               street: addressStreet.trim(),
@@ -425,17 +506,36 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     try {
       const order = await createOrderRequest(payload);
       setCreatedOrder(order);
+      clearCart(); // Limpa o carrinho ao criar o pedido com sucesso
 
       if (method === 'PIX') {
-        setStep('PIX_PENDING');
+        const initialPix = normalizePixPayload(order);
+
+        if (initialPix.copyPasteCode) {
+          setPixData(initialPix);
+          setIsLoadingPix(false);
+          setPixError(null);
+          setStep('PIX_PENDING');
+          return;
+        }
+
+        // Reset PIX state and enter loading mode
+        setPixData(EMPTY_PIX);
+        setPixError(null);
         setIsLoadingPix(true);
+        setStep('PIX_PENDING');
+
+        // Try POST first — if it returns a code immediately, use it
         try {
           const pix = await createPixPaymentRequest(order.id);
-          setPixPayment(pix);
+          const normalized = normalizePixPayload(pix);
+          if (normalized.copyPasteCode) {
+            setPixData(normalized);
+            setIsLoadingPix(false);
+          }
+          // If no code, polling effect will kick in (triggered by createdOrder.id + step change)
         } catch {
-          setPixPayment(null);
-        } finally {
-          setIsLoadingPix(false);
+          // POST falhou — polling vai tentar via GET
         }
       } else {
         setStep('ORDER_SUCCESS');
@@ -445,6 +545,13 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function retryPix() {
+    setPixError(null);
+    setPixData(EMPTY_PIX);
+    setIsLoadingPix(true);
+    // Resetting pixData.copyPasteCode to '' causes the polling effect to re-run
   }
 
   function handleSuccessClose() {
@@ -473,7 +580,6 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     createdOrder,
     isPickup,
 
-    // Delivery info
     customerFullName,
     setCustomerFullName,
     customerPhone,
@@ -489,14 +595,14 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
     deliveryInfoErrors,
     isAuthenticated,
 
-    // Save-to-profile
     isSavingToProfile,
 
     // PIX
-    pixPayment,
+    pixData,
     isLoadingPix,
+    pixError,
+    retryPix,
 
-    // Actions
     loadData,
     goToPayment,
     goToZoneSelection,

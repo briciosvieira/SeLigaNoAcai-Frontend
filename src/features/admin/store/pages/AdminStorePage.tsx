@@ -98,7 +98,11 @@ export function AdminStorePage() {
             onUploadLogo={uploadLogo}
             onLogoUploaded={(url) => updateStore({ logoUrl: url })}
           />
-          <AdminStoreAvailabilityPanel store={store} onStoreUpdated={setStore} />
+          <AdminStoreAvailabilityPanel
+            store={store}
+            onStoreUpdated={setStore}
+            onReloadStore={() => void loadStore()}
+          />
         </div>
       )}
 

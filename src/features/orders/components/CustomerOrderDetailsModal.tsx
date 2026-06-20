@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, MessageCircle } from 'lucide-react';
 import { getMyOrderByIdRequest } from '@/services/orders.service';
 import { formatBRL } from '@/utils/currency.util';
 import { formatDateTime } from '@/utils/date.util';
@@ -10,11 +10,14 @@ import {
   getPaymentStatusLabel,
   getPaymentMethodLabel,
 } from '@/utils/order.util';
+import { useCurrentStore } from '@/hooks/useCurrentStore';
+import { buildWhatsAppUrl } from '@/utils/whatsapp';
 import type { Order } from '@/types/order.types';
 
 interface Props {
   order: Order;
   onClose: () => void;
+  onDetailLoaded?: (order: Order) => void;
 }
 
 function safeNum(val: unknown): number {
@@ -22,14 +25,19 @@ function safeNum(val: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function CustomerOrderDetailsModal({ order, onClose }: Props) {
+export function CustomerOrderDetailsModal({ order, onClose, onDetailLoaded }: Props) {
   const [detail, setDetail] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const store = useCurrentStore();
+  const whatsappUrl = buildWhatsAppUrl(store?.whatsappNumber, 'Olá! Tenho uma dúvida sobre meu pedido.');
 
   useEffect(() => {
     setIsLoading(true);
     getMyOrderByIdRequest(order.id)
-      .then((d) => setDetail(d))
+      .then((d) => {
+        setDetail(d);
+        if (d) onDetailLoaded?.(d);
+      })
       .catch(() => setDetail(null))
       .finally(() => setIsLoading(false));
   }, [order.id]);
@@ -205,6 +213,21 @@ export function CustomerOrderDetailsModal({ order, onClose }: Props) {
             </div>
           )}
         </div>
+
+        {whatsappUrl && (
+          <div className="customer-order-whatsapp-box">
+            <p className="customer-order-whatsapp-title">Precisa de ajuda?</p>
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="customer-order-whatsapp-button"
+            >
+              <MessageCircle size={16} />
+              Chamar no WhatsApp
+            </a>
+          </div>
+        )}
 
         <div className="order-details-footer">
           <button type="button" className="order-details-close-button" onClick={onClose}>

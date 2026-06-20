@@ -5,6 +5,8 @@ import { useBanners } from '@/hooks/useBanners';
 import { useLocationStore } from '@/store/location.store';
 import { useCartStore } from '@/store/cart.store';
 import { useProductBuilder } from '@/hooks/useProductBuilder';
+import { useStoreAvailabilityCountdown } from '@/hooks/useStoreAvailabilityCountdown';
+import { StoreAvailabilityBadge } from '@/components/store/StoreAvailabilityBadge';
 import { FullPageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BannerCarousel } from '@/components/banner/BannerCarousel';
@@ -12,6 +14,7 @@ import { ProductBuilderModal } from '../components/ProductBuilderModal';
 import { formatCurrency } from '@/utils/currency.util';
 import { getImageUrl } from '@/utils/image-url.util';
 import { MapPin, Search, Package, ChevronRight } from 'lucide-react';
+import { useLoyaltyStore } from '@/store/loyalty.store';
 import type { Product } from '@/types/product.types';
 
 export function isComboProduct(product: Product): boolean {
@@ -29,7 +32,13 @@ export function isComboProduct(product: Product): boolean {
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { categories, products, isLoading, error, loadAll, getProductsByCategory } = useCatalog();
+  const loyaltyRewards = useLoyaltyStore((s) => s.availableRewards);
+  const loyaltyEnabled = useLoyaltyStore((s) => s.isEnabled);
+  const { store, categories, products, isLoading, error, loadAll, loadStore, getProductsByCategory } = useCatalog();
+  const remainingSeconds = useStoreAvailabilityCountdown(
+    store?.availability?.remainingSeconds ?? 0,
+    () => void loadStore(),
+  );
   const { banners, loadActiveBanners } = useBanners();
   const selectedZone = useLocationStore((s) => s.selectedDeliveryZone);
   const addItem = useCartStore((s) => s.addItem);
@@ -62,41 +71,105 @@ export function HomePage() {
       {/* Carrossel de banners */}
       <BannerCarousel banners={banners} />
 
-      {/* Alerta de bairro */}
-      {!selectedZone && (
+      {/* Banner de brinde fidelidade */}
+      {loyaltyEnabled === true && loyaltyRewards > 0 && (
         <button
-          onClick={() => navigate('/location')}
+          onClick={() => navigate('/loyalty')}
           style={{
-            width: '100%', padding: '11px 16px',
-            background: 'rgba(91,26,138,0.35)', border: 'none',
-            borderBottom: '1px solid rgba(139,47,201,0.3)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 8,
-            color: 'var(--roxo-c)', fontSize: '0.85rem', fontWeight: 600,
+            width: '100%',
+            padding: '11px 16px',
+            background: 'linear-gradient(90deg, rgba(255,193,7,0.18), rgba(255,160,0,0.10))',
+            border: 'none',
+            borderBottom: '1px solid rgba(255,193,7,0.28)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            color: '#ffe100',
+            fontSize: '0.875rem',
+            fontWeight: 700,
             justifyContent: 'space-between',
+            textAlign: 'left',
           }}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <MapPin size={15} />
-            Selecione seu bairro para ver taxa de entrega
+            🎁
+            <span>
+              Você tem {loyaltyRewards} {loyaltyRewards === 1 ? 'brinde de fidelidade disponível' : 'brindes de fidelidade disponíveis'}!
+            </span>
           </span>
-          <ChevronRight size={15} />
+          <ChevronRight size={15} style={{ flexShrink: 0 }} />
         </button>
       )}
 
+      {/* Alerta de bairro */}
+      {!selectedZone && (
+        <div style={{ borderBottom: '1px solid rgba(139,47,201,0.3)' }}>
+          <button
+            onClick={() => navigate('/location')}
+            style={{
+              width: '100%', padding: '11px 16px',
+              background: 'rgba(91,26,138,0.35)', border: 'none',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8,
+              color: 'var(--roxo-c)', fontSize: '0.85rem', fontWeight: 600,
+              justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MapPin size={15} />
+              Selecione seu bairro para ver taxa de entrega
+            </span>
+            <ChevronRight size={15} />
+          </button>
+
+          {store?.availability && (
+            <div
+              style={{
+                display: 'flex', justifyContent: 'flex-end',
+                padding: '6px 16px 8px',
+              }}
+            >
+              <StoreAvailabilityBadge
+                availability={store.availability}
+                remainingSeconds={remainingSeconds}
+                compact
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {selectedZone && (
-        <button
-          onClick={() => navigate('/location')}
+        <div
           style={{
-            width: '100%', padding: '9px 16px', background: 'transparent',
-            border: 'none', borderBottom: '1px solid var(--c2)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6,
-            color: 'var(--am)', fontSize: '0.78rem', fontWeight: 600,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 12, padding: '9px 16px',
+            borderBottom: '1px solid var(--c2)',
           }}
         >
-          <MapPin size={13} />
-          {selectedZone.neighborhood}
-          <span style={{ color: 'var(--t3)', marginLeft: 4 }}>· alterar</span>
-        </button>
+          <button
+            onClick={() => navigate('/location')}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              color: 'var(--am)', fontSize: '0.78rem', fontWeight: 600,
+              padding: 0,
+            }}
+          >
+            <MapPin size={13} />
+            {selectedZone.neighborhood}
+            <span style={{ color: 'var(--t3)', marginLeft: 4 }}>· alterar</span>
+          </button>
+
+          {store?.availability && (
+            <StoreAvailabilityBadge
+              availability={store.availability}
+              remainingSeconds={remainingSeconds}
+              compact
+            />
+          )}
+        </div>
       )}
 
       {/* Busca */}

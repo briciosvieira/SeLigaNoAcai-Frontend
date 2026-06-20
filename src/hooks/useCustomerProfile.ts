@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { PICKUP_DELIVERY_ZONE_ID } from '@/constants/pickup.constants';
+import { useAuthStore } from '@/store/auth.store';
 import {
   getCustomerMeRequest,
   getMyDefaultAddressRequest,
@@ -52,6 +54,7 @@ export function useCustomerProfile() {
     () =>
       deliveryZones
         .filter((z) => z.isAvailable)
+        .filter((z) => z.id !== PICKUP_DELIVERY_ZONE_ID)
         .sort((a, b) =>
           a.neighborhood.localeCompare(b.neighborhood, 'pt-BR', { sensitivity: 'base' }),
         ),
@@ -66,7 +69,7 @@ export function useCustomerProfile() {
   const hydrateForm = useCallback(
     (currentMe: CustomerMe | null, currentAddress: CustomerDefaultAddress | null) => {
       setForm({
-        fullName: currentMe?.name ?? '',
+        fullName: currentMe?.fullName ?? '',
         phone: currentMe?.phone ?? '',
         deliveryZoneId: currentAddress?.deliveryZoneId ?? '',
         street: currentAddress?.street ?? '',
@@ -119,10 +122,18 @@ export function useCustomerProfile() {
     setSuccessMessage(null);
     try {
       const updated = await updateMeRequest({
-        name: form.fullName.trim(),
+        fullName: form.fullName.trim(),
         phone: form.phone.trim(),
       });
       setMe(updated);
+      // Sincroniza nome/telefone no auth store para refletir imediatamente no header
+      const authState = useAuthStore.getState();
+      if (authState.user) {
+        authState.updateUser({
+          fullName: updated.fullName,
+          phone: updated.phone ?? authState.user.phone,
+        });
+      }
       setSuccessMessage('Dados pessoais atualizados com sucesso.');
     } catch (error) {
       setErrorMessage(getApiError(error));

@@ -61,7 +61,7 @@ export function CustomerOrderCard({ order, onViewDetails }: Props) {
           <span>Itens</span>
           <strong>
             {itemsCount === null
-              ? 'Não carregados'
+              ? 'Em ver detalhes'
               : `${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'}`}
           </strong>
         </div>

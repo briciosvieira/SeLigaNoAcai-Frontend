@@ -1,0 +1,1 @@
+nao yrm nada, ta vaxio

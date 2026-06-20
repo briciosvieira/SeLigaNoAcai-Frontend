@@ -10,7 +10,7 @@ import type { Order } from '@/types/order.types';
 import './OrdersPage.css';
 
 export function OrdersPage() {
-  const { orders, isLoading, error, loadMyOrders } = useOrders();
+  const { orders, isLoading, error, loadMyOrders, mergeOrderDetail } = useOrders();
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
@@ -84,6 +84,7 @@ export function OrdersPage() {
         <CustomerOrderDetailsModal
           order={selectedOrder}
           onClose={handleCloseModal}
+          onDetailLoaded={mergeOrderDetail}
         />
       )}
     </>

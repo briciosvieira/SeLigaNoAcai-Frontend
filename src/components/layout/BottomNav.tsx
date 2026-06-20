@@ -1,6 +1,7 @@
 import { Home, Search, ClipboardList, ShoppingCart, Gift, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useCartStore } from '@/store/cart.store';
+import { useLoyaltyStore } from '@/store/loyalty.store';
 
 type NavItem = {
   to: string;
@@ -12,13 +13,16 @@ type NavItem = {
 
 export function BottomNav() {
   const itemCount = useCartStore((s) => s.items.reduce((acc, i) => acc + i.quantity, 0));
+  const loyaltyEnabled = useLoyaltyStore((s) => s.isEnabled);
 
   const items: NavItem[] = [
     { to: '/', label: 'Início', icon: <Home size={22} />, end: true },
     { to: '/search', label: 'Buscar', icon: <Search size={22} /> },
     { to: '/orders', label: 'Pedidos', icon: <ClipboardList size={22} /> },
     { to: '/cart', label: 'Carrinho', icon: <ShoppingCart size={22} />, badge: itemCount },
-    { to: '/loyalty', label: 'Fidelidade', icon: <Gift size={22} /> },
+    ...(loyaltyEnabled === true
+      ? [{ to: '/loyalty', label: 'Fidelidade', icon: <Gift size={22} /> }]
+      : []),
     { to: '/profile', label: 'Perfil', icon: <User size={22} /> },
   ];
 
@@ -108,7 +112,17 @@ const navStyles = `
     justify-content: center;
   }
 
-  .bottom-nav-label { line-height: 1; }
+  .bottom-nav-label {
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  @media (max-width: 380px) {
+    .bottom-nav-item { font-size: 0.52rem; }
+  }
 
   /* Esconder bottom nav no desktop */
   @media (min-width: 1024px) {

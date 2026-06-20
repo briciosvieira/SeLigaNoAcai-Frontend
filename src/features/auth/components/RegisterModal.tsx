@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 const schema = z.object({
-  name: z.string().min(3, 'Mínimo 3 caracteres'),
+  fullName: z.string().min(3, 'Mínimo 3 caracteres'),
   email: z.string().email('E-mail inválido'),
   phone: z.string().min(10, 'Telefone inválido').max(11, 'Telefone inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
@@ -32,9 +32,9 @@ export function RegisterModal({ onClose }: Props) {
 
   async function onSubmit(data: FormData) {
     await registerUser({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
+      fullName: data.fullName.trim(),
+      email: data.email.trim().toLowerCase(),
+      phone: data.phone.trim(),
       password: data.password,
     }).catch(() => {});
   }
@@ -91,8 +91,8 @@ export function RegisterModal({ onClose }: Props) {
             label="Nome completo"
             type="text"
             placeholder="Seu nome"
-            error={errors.name?.message}
-            {...register('name')}
+            error={errors.fullName?.message}
+            {...register('fullName')}
           />
           <AuthField
             label="E-mail"

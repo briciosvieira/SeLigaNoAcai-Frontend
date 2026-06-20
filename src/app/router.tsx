@@ -23,6 +23,7 @@ import { AdminOptionsPage } from '@/features/admin/options/pages/AdminOptionsPag
 import { AdminStorePage } from '@/features/admin/store/pages/AdminStorePage';
 import { AdminDeliveryZonesPage } from '@/features/admin/delivery-zones/pages/AdminDeliveryZonesPage';
 import { AdminPromotionsPage } from '@/features/admin/promotions/pages/AdminPromotionsPage';
+import { AdminLoyaltyPage } from '@/features/admin/loyalty/pages/AdminLoyaltyPage';
 
 export const router = createBrowserRouter([
   {
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
                   { path: '/admin/store', element: <AdminStorePage /> },
                   { path: '/admin/delivery-zones', element: <AdminDeliveryZonesPage /> },
                   { path: '/admin/promotions', element: <AdminPromotionsPage /> },
+                  { path: '/admin/loyalty', element: <AdminLoyaltyPage /> },
                 ],
               },
               {

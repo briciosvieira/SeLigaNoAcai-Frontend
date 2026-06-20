@@ -1,38 +1,29 @@
-import { MapPin, ShoppingBag, LogIn, User, LogOut, ChevronDown, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, LogIn, User, LogOut, ChevronDown, ShieldCheck, MessageCircle } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
-import { useLocationStore } from '@/store/location.store';
 import { useCartStore } from '@/store/cart.store';
 import { useAuthStore } from '@/store/auth.store';
+import { useLoyaltyStore } from '@/store/loyalty.store';
 import { useAuth } from '@/hooks/useAuth';
-import { useCatalog } from '@/hooks/useCatalog';
-import { useStoreAvailabilityCountdown } from '@/hooks/useStoreAvailabilityCountdown';
-import { StoreAvailabilityBadge } from '@/components/store/StoreAvailabilityBadge';
-
-const desktopNavItems = [
-  { to: '/', label: 'Início', end: true },
-  { to: '/orders', label: 'Pedidos', end: false },
-  { to: '/loyalty', label: 'Fidelidade', end: false },
-];
+import { useCurrentStore } from '@/hooks/useCurrentStore';
+import { buildWhatsAppUrl } from '@/utils/whatsapp';
 
 export function Header() {
   const navigate = useNavigate();
-  const selectedZone = useLocationStore((s) => s.selectedDeliveryZone);
   const itemCount = useCartStore((s) => s.items.reduce((acc, i) => acc + i.quantity, 0));
   const { isAuthenticated, user } = useAuthStore();
+  const loyaltyEnabled = useLoyaltyStore((s) => s.isEnabled);
   const { logout } = useAuth();
+
+  const desktopNavItems = [
+    { to: '/', label: 'Início', end: true },
+    { to: '/orders', label: 'Pedidos', end: false },
+    ...(loyaltyEnabled === true ? [{ to: '/loyalty', label: 'Fidelidade', end: false }] : []),
+  ];
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Traz a loja do hook do catálogo e inicia o contador regressivo
-  const { store, loadStore } = useCatalog();
-  const remainingSeconds = useStoreAvailabilityCountdown(store?.availability?.remainingSeconds ?? 0);
-
-  useEffect(() => {
-    if (remainingSeconds === 0 && store?.availability?.availabilityUntil) {
-      loadStore?.();
-    }
-  }, [remainingSeconds, store?.availability?.availabilityUntil, loadStore]);
+  const store = useCurrentStore();
+  const whatsappUrl = buildWhatsAppUrl(store?.whatsappNumber, 'Olá! Gostaria de mais informações.');
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -58,25 +49,6 @@ export function Header() {
             Se Liga no Açaí
           </button>
 
-          {/* Seletor de bairro */}
-          <button
-            onClick={() => navigate('/location')}
-            className="header-location"
-            aria-label="Selecionar bairro"
-          >
-            <MapPin size={13} />
-            <span className="header-location-text">
-              {selectedZone ? selectedZone.neighborhood : 'Selecionar bairro'}
-            </span>
-          </button>
-
-          {/* Status de Funcionamento da Loja */}
-          <StoreAvailabilityBadge 
-            availability={store?.availability} 
-            remainingSeconds={remainingSeconds} 
-            compact 
-          />
-
           {/* Nav desktop (só aparece em desktop via CSS) */}
           <nav className="header-desktop-nav">
             {desktopNavItems.map((item) => (
@@ -95,6 +67,20 @@ export function Header() {
 
           {/* Ações direita */}
           <div className="header-actions">
+            {/* WhatsApp desktop — visível só no desktop */}
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="header-whatsapp-btn header-whatsapp-btn--desktop"
+                aria-label="Falar no WhatsApp"
+              >
+                <MessageCircle size={15} />
+                <span>WhatsApp</span>
+              </a>
+            )}
+
             {/* Auth desktop — dropdown com perfil + sair */}
             <div className="header-auth-desktop">
               {isAuthenticated ? (
@@ -107,7 +93,7 @@ export function Header() {
                     aria-label="Menu do usuário"
                   >
                     <User size={15} />
-                    <span>{user?.name?.split(' ')[0]}</span>
+                    <span>{user?.fullName?.split(' ')[0]}</span>
                     <ChevronDown size={12} className={`header-chevron${dropdownOpen ? ' header-chevron--up' : ''}`} />
                   </button>
 
@@ -157,8 +143,21 @@ export function Header() {
               )}
             </div>
 
-            {/* Logout mobile — ícone visível só quando autenticado, oculto no desktop */}
-            {isAuthenticated && (
+            {/* WhatsApp mobile — visível só em mobile, quando número disponível */}
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="header-whatsapp-btn header-whatsapp-btn--mobile"
+                aria-label="Falar no WhatsApp"
+              >
+                <MessageCircle size={20} />
+              </a>
+            )}
+
+            {/* Logout mobile — visível só quando autenticado e sem WhatsApp, oculto no desktop */}
+            {isAuthenticated && !whatsappUrl && (
               <button
                 onClick={() => logout()}
                 className="header-logout-mobile"
@@ -202,6 +201,7 @@ const headerStyles = `
   .header-inner {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 10px;
     height: 56px;
     padding: 0 16px;
@@ -219,27 +219,9 @@ const headerStyles = `
     padding: 0;
     flex-shrink: 0;
     white-space: nowrap;
-  }
-
-  .header-location {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--am);
-    font-size: 0.72rem;
-    font-weight: 600;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .header-location-text {
+    max-width: calc(100vw - 130px);
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .header-desktop-nav { display: none; }
@@ -250,7 +232,30 @@ const headerStyles = `
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
+    margin-left: auto;
   }
+
+  /* WhatsApp button */
+  .header-whatsapp-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: #25d366;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: var(--r-full);
+    padding: 6px 10px;
+    text-decoration: none;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .header-whatsapp-btn:hover { background: #1ebe57; }
+
+  /* Mobile: ícone apenas, sem label */
+  .header-whatsapp-btn--mobile span { display: none; }
+  /* Desktop variant hidden em mobile */
+  .header-whatsapp-btn--desktop { display: none; }
 
   /* Logout mobile — visível só em mobile/tablet */
   .header-logout-mobile {
@@ -410,11 +415,6 @@ const headerStyles = `
 
     .header-logo { font-size: 1.4rem; }
 
-    .header-location {
-      flex: 0 0 auto;
-      font-size: 0.8rem;
-    }
-
     .header-desktop-nav {
       display: flex;
       align-items: center;
@@ -426,5 +426,9 @@ const headerStyles = `
 
     /* No desktop, o logout já fica no dropdown — esconde o ícone mobile */
     .header-logout-mobile { display: none; }
+
+    /* No desktop, mostra o botão desktop e esconde o mobile */
+    .header-whatsapp-btn--desktop { display: flex; }
+    .header-whatsapp-btn--mobile { display: none; }
   }
 `;

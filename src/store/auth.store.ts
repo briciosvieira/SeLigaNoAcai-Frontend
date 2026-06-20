@@ -10,6 +10,7 @@ type AuthState = {
   isGuest: boolean;
   setAuth: (params: { user: AuthUser; accessToken: string; refreshToken: string }) => void;
   setUser: (user: AuthUser | null) => void;
+  updateUser: (partial: Partial<AuthUser>) => void;
   setGuestMode: (isGuest: boolean) => void;
   clearAuth: () => void;
 };
@@ -27,6 +28,11 @@ export const useAuthStore = create<AuthState>()(
         set({ user, accessToken, refreshToken, isAuthenticated: true, isGuest: false }),
 
       setUser: (user) => set({ user }),
+
+      updateUser: (partial) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...partial } : state.user,
+        })),
 
       setGuestMode: (isGuest) => set({ isGuest }),
 

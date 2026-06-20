@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '@/utils/currency.util';
 import { resolveImageUrl, getImageUrl } from '@/utils/image-url.util';
 import { ShoppingCart, Trash2, Plus, Minus, Gift } from 'lucide-react';
+import { getStoreIsOpen } from '@/components/store/StoreAvailabilityBadge';
 import './CartPage.css';
 
 export function CartPage() {
@@ -26,8 +27,11 @@ export function CartPage() {
   } = useCartPromotions();
 
   const { store, loadStore } = useCatalog();
-  const remainingSeconds = useStoreAvailabilityCountdown(store?.availability?.remainingSeconds ?? 0);
-  const isStoreClosed = store?.availability?.isOpen === false;
+  const remainingSeconds = useStoreAvailabilityCountdown(
+    store?.availability?.remainingSeconds ?? 0,
+    () => void loadStore(),
+  );
+  const isStoreClosed = store ? !getStoreIsOpen(store) : false;
 
   useEffect(() => {
     loadStore();
@@ -36,7 +40,7 @@ export function CartPage() {
 
   const finalTotal = promotionalTotal + deliveryFee;
 
-  if (items.length === 0) {
+  if (items.length === 0 && !showCheckout) {
     return (
       <EmptyState
         icon={<ShoppingCart size={56} />}
@@ -84,7 +88,16 @@ export function CartPage() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 800, fontSize: '1rem', marginBottom: 4, color: '#fff' }}>{item.productName}</p>
-                {item.variantName && <p style={{ fontSize: '0.8rem', color: 'var(--purple-soft)' }}>{item.variantName}</p>}
+                {item.variantName && (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--purple-soft)', marginBottom: 2 }}>
+                    Tamanho: {item.variantName}
+                  </p>
+                )}
+                {item.selectedOptions && item.selectedOptions.length > 0 && (
+                  <p style={{ fontSize: '0.78rem', color: 'var(--t2)', marginBottom: 2 }}>
+                    Adicionais: {item.selectedOptions.map((o) => o.optionName).join(', ')}
+                  </p>
+                )}
                 {item.notes && <p style={{ fontSize: '0.75rem', color: 'var(--t2)', fontStyle: 'italic', marginTop: 4 }}>{item.notes}</p>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 12 }}>
                   <span style={{ fontWeight: 800, color: 'var(--yellow)', fontSize: '1.05rem' }}>
@@ -181,7 +194,7 @@ export function CartPage() {
         A loja está fechada no momento.
         {remainingSeconds > 0 && (
           <span style={{ display: 'block', marginTop: 4, fontSize: '0.8rem', fontWeight: 600, color: 'rgba(248, 113, 113, 0.8)' }}>
-            Abre em {formatRemainingTime(remainingSeconds)}
+            {store?.availability?.nextLabel || 'Abre em'} {formatRemainingTime(remainingSeconds)}
           </span>
         )}
       </div>

@@ -1,29 +1,40 @@
-import { useState } from 'react';
-import { getMyLoyaltyCardRequest, getLoyaltyBenefitsRequest } from '@/services/loyalty.service';
-import type { LoyaltyCard, LoyaltyBenefit } from '@/types/loyalty.types';
+import { useCallback, useEffect, useState } from 'react';
+import { getMyLoyaltyRequest } from '@/services/loyalty.service';
+import { useLoyaltyStore } from '@/store/loyalty.store';
+import type { LoyaltyMeResponse } from '@/types/loyalty.types';
 
 export function useLoyalty() {
-  const [card, setCard] = useState<LoyaltyCard | null>(null);
-  const [benefits, setBenefits] = useState<LoyaltyBenefit[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState<LoyaltyMeResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDisabled, setIsDisabled] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const setStore = useLoyaltyStore((s) => s.set);
 
-  async function loadLoyalty() {
+  const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [cardData, benefitsData] = await Promise.allSettled([
-        getMyLoyaltyCardRequest(),
-        getLoyaltyBenefitsRequest(),
-      ]);
-      if (cardData.status === 'fulfilled') setCard(cardData.value);
-      if (benefitsData.status === 'fulfilled') setBenefits(benefitsData.value ?? []);
-    } catch {
-      setError('Erro ao carregar fidelidade');
+      const result = await getMyLoyaltyRequest();
+      setData(result);
+      const enabled = result.settings.isEnabled;
+      setIsDisabled(!enabled);
+      setStore({ isEnabled: enabled, availableRewards: result.card.availableRewards });
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      if (status === 404 || status === 403) {
+        setIsDisabled(true);
+        setStore({ isEnabled: false });
+      } else {
+        setError('Não foi possível carregar o programa de fidelidade.');
+      }
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [setStore]);
 
-  return { card, benefits, isLoading, error, loadLoyalty };
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return { data, isLoading, isDisabled, error, reload: load };
 }

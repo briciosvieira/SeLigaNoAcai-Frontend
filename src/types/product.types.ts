@@ -101,19 +101,14 @@ export type CreateProductVariantPayload = {
   name: string;
   price: number;
   isActive?: boolean;
-  sortOrder?: number;
 };
 
 export type UpdateProductVariantPayload = Partial<CreateProductVariantPayload>;
 
 export type CreateOptionGroupPayload = {
   name: string;
-  slug: string;
-  selectionType: 'SINGLE' | 'MULTIPLE';
-  description?: string | null;
   minSelected?: number;
   maxSelected?: number;
-  isRequired?: boolean;
   isActive?: boolean;
 };
 

@@ -4,7 +4,7 @@ export type AuthProvider = 'GOOGLE' | 'GUEST' | 'MANUAL';
 
 export type CustomerMe = {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
   phone?: string | null;
   role: string;
@@ -15,7 +15,7 @@ export type CustomerMe = {
 };
 
 export type UpdateMePayload = {
-  name?: string;
+  fullName?: string;
   phone?: string;
 };
 

@@ -1,11 +1,11 @@
 import { X, Plus, Minus, ShoppingCart, Image as ImageIcon } from 'lucide-react';
 import { formatBRL } from '@/utils/currency.util';
 import { getImageUrl } from '@/utils/image-url.util';
-import type { useProductBuilder } from '@/hooks/useProductBuilder';
-import type { OptionGroup } from '@/types/product.types';
+import { useProductBuilder, getGroupMaxSelected, getGroupMinSelected, type SelectedProductOption } from '@/hooks/useProductBuilder';
+import type { OptionGroup, ProductOption } from '@/types/product.types';
 import { isComboProduct } from '../pages/HomePage';
 
-type Builder = ReturnType<typeof useProductBuilder>;
+export type Builder = ReturnType<typeof useProductBuilder>;
 
 interface Props {
   builder: Builder;
@@ -16,7 +16,7 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
   const {
     isOpen, product, variants, optionGroups, isLoading,
     selectedVariantId, setSelectedVariantId,
-    selectedOptionsByGroup, toggleOption,
+    selectedOptions, toggleOption,
     quantity, setQuantity,
     notes, setNotes,
     basePrice, totalPrice,
@@ -77,8 +77,14 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
                     </div>
                   ) : (
                     <>
-                      {variants.length > 0 && (
-                        <Section title="Escolha o tamanho" required={false}>
+                      {variants.filter((v) => v.isActive).length > 0 && (
+                        <Section
+                          title="Escolha o tamanho"
+                          required={true}
+                          error={
+                            validationError?.includes('tamanho') ? validationError : null
+                          }
+                        >
                           {variants.filter((v) => v.isActive).map((variant) => {
                             const sel = selectedVariantId === variant.id;
                             return (
@@ -87,7 +93,7 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
                                 label={variant.name}
                                 price={Number(variant.price)}
                                 selected={sel}
-                                onToggle={() => setSelectedVariantId(sel ? null : variant.id)}
+                                onToggle={() => setSelectedVariantId(variant.id)}
                               />
                             );
                           })}
@@ -98,9 +104,9 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
                         <OptionGroupSection
                           key={group.id}
                           group={group}
-                          selectedIds={selectedOptionsByGroup[group.id] ?? []}
+                          selectedOptions={selectedOptions}
                           validationError={validationError}
-                          onToggle={(optionId) => toggleOption(group.id, optionId, group.maxSelected)}
+                          onToggle={(option) => toggleOption(group, option)}
                         />
                       ))}
                     </>
@@ -392,30 +398,73 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
           border-color: rgba(255, 255, 255, 0.13);
         }
 
-        /* Opção */
-        .pm-option {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          padding: 10px 13px;
-          border-radius: 5px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          cursor: pointer;
+        /* Opção Clicável (Product Option Card) */
+        .product-option-card {
           width: 100%;
-          transition: background 0.15s, border-color 0.15s;
+          min-height: 54px;
+          display: grid;
+          grid-template-columns: auto 1fr auto;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          background: rgba(255, 255, 255, 0.035);
+          color: #ffffff;
           text-align: left;
+          cursor: pointer;
+          opacity: 1;
+          transition: all 0.2s ease;
         }
-        .pm-option.selected {
-          border-color: rgba(192, 132, 252, 0.65);
-          background: rgba(157, 47, 224, 0.13);
+        .product-option-card:hover {
+          border-color: rgba(216, 180, 254, 0.45);
+          background: rgba(168, 85, 247, 0.08);
         }
-        .pm-option:hover:not(.selected):not(:disabled) {
-          background: rgba(255, 255, 255, 0.07);
-          border-color: rgba(255, 255, 255, 0.13);
+        .product-option-card.selected {
+          border-color: rgba(168, 85, 247, 0.95);
+          background: rgba(168, 85, 247, 0.16);
         }
-        .pm-option:disabled { opacity: 0.42; cursor: not-allowed; }
+        .product-option-check {
+          width: 18px;
+          height: 18px;
+          border-radius: 6px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .product-option-card.selected .product-option-check {
+          background: #a855f7;
+          border-color: #c084fc;
+        }
+        .product-option-check-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: #ffffff;
+        }
+        .product-option-info {
+          min-width: 0;
+          display: grid;
+          gap: 2px;
+        }
+        .product-option-info strong {
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 900;
+          margin: 0;
+        }
+        .product-option-info small {
+          color: rgba(255, 255, 255, 0.54);
+          font-size: 12px;
+          margin: 0;
+        }
+        .product-option-price {
+          color: #ffe100;
+          font-size: 13px;
+          font-weight: 950;
+          white-space: nowrap;
+        }
 
         /* Observação */
         .pm-notes { padding: 16px 0 22px; }
@@ -654,42 +703,42 @@ function Section({
 // ── OptionGroupSection ────────────────────────────────────────────────────────
 
 function OptionGroupSection({
-  group, selectedIds, validationError, onToggle,
+  group, selectedOptions, validationError, onToggle,
 }: {
   group: OptionGroup;
-  selectedIds: string[];
+  selectedOptions: SelectedProductOption[];
   validationError: string | null;
-  onToggle: (optionId: string) => void;
+  onToggle: (option: ProductOption) => void;
 }) {
-  const isRadio = group.maxSelected === 1;
   const activeOptions = (group.options ?? []).filter((o) => o.isActive);
+  const minSelected = getGroupMinSelected(group);
+  const maxSelected = getGroupMaxSelected(group, activeOptions.length);
+
   const error = validationError?.toLowerCase().includes(group.name.toLowerCase())
     ? validationError
     : null;
 
   return (
     <Section title={group.name || 'Adicionais'} required={group.isRequired} error={error}>
-      {(group.minSelected > 0 || group.maxSelected > 1) && (
+      {(minSelected > 0 || maxSelected > 1) && (
         <p className="pm-section-hint">
-          {group.minSelected > 0 ? `Escolha de ${group.minSelected} até ` : 'Escolha até '}
-          {group.maxSelected} {group.maxSelected === 1 ? 'opção' : 'opções'}
+          {minSelected > 0 ? `Escolha de ${minSelected} até ` : 'Escolha até '}
+          {maxSelected} {maxSelected === 1 ? 'opção' : 'opções'}
         </p>
       )}
       {activeOptions.map((option) => {
         const price = Number(option.additionalPrice ?? 0);
-        const selected = selectedIds.includes(option.id);
-        const atMax = !selected && selectedIds.length >= group.maxSelected;
+        const selected = selectedOptions.some(s => s.optionGroupId === String(group.id) && s.optionId === String(option.id));
+
         return (
           <OptionItem
             key={option.id}
             emoji={option.emoji ?? undefined}
             label={option.name}
             description={option.description ?? undefined}
-            price={price > 0 ? price : undefined}
+            price={price}
             selected={selected}
-            disabled={atMax}
-            isRadio={isRadio}
-            onToggle={() => !atMax && onToggle(option.id)}
+            onToggle={() => onToggle(option)}
           />
         );
       })}
@@ -719,9 +768,9 @@ function VariantItem({
       <span style={{
         fontSize: '0.875rem',
         fontWeight: 700,
-        color: price > 0 ? '#ffe100' : 'rgba(255,255,255,0.45)',
+        color: '#ffe100',
       }}>
-        {price ? `+ ${formatBRL(price)}` : 'Grátis'}
+        {formatBRL(price)}
       </span>
     </button>
   );
@@ -730,75 +779,32 @@ function VariantItem({
 // ── OptionItem ────────────────────────────────────────────────────────────────
 
 function OptionItem({
-  emoji, label, description, price, selected, disabled, isRadio, onToggle,
+  emoji, label, description, price, selected, onToggle,
 }: {
   emoji?: string;
   label: string;
   description?: string;
   price?: number;
   selected: boolean;
-  disabled?: boolean;
-  isRadio?: boolean;
   onToggle: () => void;
 }) {
   return (
     <button
-      className={`pm-option${selected ? ' selected' : ''}`}
+      type="button"
+      className={['product-option-card', selected ? 'selected' : ''].filter(Boolean).join(' ')}
       onClick={onToggle}
-      disabled={disabled}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-        {/* Indicador radio/checkbox */}
-        <div style={{
-          width: 20, height: 20,
-          borderRadius: isRadio ? '50%' : 5,
-          flexShrink: 0,
-          border: `2px solid ${selected ? '#c084fc' : 'rgba(255,255,255,0.25)'}`,
-          background: selected ? '#9d2fe0' : 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.15s',
-        }}>
-          {selected && (
-            isRadio
-              ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />
-              : <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
-                  <path d="M1 4l3 3 6-6" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-          )}
-        </div>
+      <span className="product-option-check">
+        {selected && <span className="product-option-check-dot" />}
+      </span>
 
-        {emoji && <span style={{ fontSize: '1.15rem', flexShrink: 0 }}>{emoji}</span>}
+      <span className="product-option-info">
+        <strong>{emoji ? `${emoji} ${label}` : label}</strong>
+        {description && <small>{description}</small>}
+      </span>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            fontSize: '0.875rem',
-            fontWeight: selected ? 700 : 500,
-            color: selected ? '#fff' : 'rgba(255,255,255,0.88)',
-            margin: 0,
-          }}>
-            {label}
-          </p>
-          {description && (
-            <p style={{
-              fontSize: '0.775rem',
-              color: 'rgba(255,255,255,0.5)',
-              marginTop: 2,
-              margin: '2px 0 0',
-              lineHeight: 1.35,
-            }}>
-              {description}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <span style={{
-        fontSize: '0.85rem',
-        fontWeight: 700,
-        color: price && price > 0 ? '#ffe100' : 'rgba(255,255,255,0.42)',
-        flexShrink: 0,
-      }}>
-        {price ? `+ ${formatBRL(price)}` : 'Grátis'}
+      <span className="product-option-price">
+        {price && price > 0 ? `+ ${formatBRL(price)}` : 'Grátis'}
       </span>
     </button>
   );
