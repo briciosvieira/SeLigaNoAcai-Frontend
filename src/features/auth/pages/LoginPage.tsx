@@ -300,15 +300,17 @@ const loginStyles = `
   .login-root {
     display: flex;
     flex-direction: column;
-    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
   }
 
   /* Imagem no topo — mobile only */
   .login-img-top {
     position: relative;
     width: 100%;
-    height: 42dvh;
-    min-height: 210px;
+    height: 32dvh;
+    min-height: 150px;
+    max-height: 220px;
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -343,16 +345,19 @@ const loginStyles = `
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-height: 0;
   }
 
   .login-spacer { display: none; }
 
   .login-form-col {
     flex: 1;
+    min-height: 0;
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding: 20px 20px 44px;
+    padding: 18px 20px 20px;
+    overflow-y: auto;
     /* gradiente que continua a "descida" da imagem */
     background: linear-gradient(
       to bottom,
@@ -426,15 +431,28 @@ const loginStyles = `
       flex: 0 0 480px;
       align-items: center;
       justify-content: center;
-      padding: 56px 52px;
+      padding: 40px 48px;
       background: rgba(10, 4, 22, 0.50);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-left: 1px solid rgba(255, 255, 255, 0.05);
+      overflow: hidden;
     }
 
     .login-form-box {
       max-width: 100%;
+    }
+  }
+
+  /* Telas muito baixas (< 680px de altura): reduz mais ainda */
+  @media (max-height: 680px) {
+    .login-img-top {
+      height: 25dvh;
+      min-height: 110px;
+    }
+
+    .login-form-col {
+      padding: 12px 20px 16px;
     }
   }
 `;

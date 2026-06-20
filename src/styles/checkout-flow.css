@@ -608,6 +608,25 @@
   .checkout-address-row {
     grid-template-columns: 1fr 80px;
   }
+
+  /* PIX mobile: esconde código copia e cola, mantém QR + botão */
+  .checkout-pix-code {
+    display: none;
+  }
+
+  .checkout-pix-copy-row {
+    flex-direction: column;
+  }
+
+  .checkout-pix-qr-frame {
+    width: 200px;
+    height: 200px;
+  }
+
+  .checkout-pix-qr-image {
+    width: 184px;
+    height: 184px;
+  }
 }
 
 @media (max-width: 400px) {

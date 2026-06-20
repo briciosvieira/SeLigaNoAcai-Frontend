@@ -12,8 +12,6 @@ import {
   MapPin,
   Tag,
   Gift,
-  Menu,
-  X,
   LogOut,
   ArrowLeft,
 } from 'lucide-react';
@@ -21,7 +19,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { Toast } from '@/components/ui/Toast';
 
 export function AdminLayout() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const user = useAuthStore((s) => s.user);
@@ -52,116 +50,263 @@ export function AdminLayout() {
     navigate('/login');
   }
 
-  const sidebarStyle: React.CSSProperties = {
-    width: 220,
-    background: 'var(--c1)',
-    borderRight: '1px solid var(--c3)',
-    display: 'flex',
-    flexDirection: 'column',
-    padding: '24px 0',
-    minHeight: '100dvh',
-    flexShrink: 0,
-  };
-
-  const navLinkStyle = (isActive: boolean): React.CSSProperties => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '10px 20px',
-    color: isActive ? 'var(--roxo-c)' : 'var(--t2)',
-    background: isActive ? 'var(--c2)' : 'transparent',
-    borderLeft: isActive ? '3px solid var(--roxo-v)' : '3px solid transparent',
-    textDecoration: 'none',
-    fontSize: '0.875rem',
-    fontWeight: 600,
-    transition: 'all var(--transition)',
-  });
+  function closeSidebar() {
+    setIsMobileSidebarOpen(false);
+  }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh' }}>
-      {/* Sidebar desktop */}
-      <aside className="hide-sm" style={sidebarStyle}>
-        <div style={{ padding: '0 20px 24px', fontFamily: 'var(--font-brand)', fontSize: '1.1rem', color: 'var(--roxo-c)' }}>
+    <div className="admin-layout">
+      <aside className={['admin-sidebar', isMobileSidebarOpen ? 'is-open' : ''].filter(Boolean).join(' ')}>
+        <div className="admin-sidebar-brand">
           Admin Panel
         </div>
-        <nav style={{ flex: 1 }}>
+
+        <nav className="admin-sidebar-nav">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
-              style={({ isActive }) => navLinkStyle(isActive)}
+              onClick={closeSidebar}
+              className={({ isActive }) =>
+                ['admin-nav-link', isActive ? 'admin-nav-link--active' : ''].filter(Boolean).join(' ')
+              }
             >
               {item.icon}
               {item.label}
             </NavLink>
           ))}
         </nav>
-        <div style={{ borderTop: '1px solid var(--c3)', paddingTop: 8 }}>
+
+        <div className="admin-sidebar-footer">
           <button
-            onClick={() => navigate('/')}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', color: 'var(--roxo-c)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, width: '100%' }}
+            className="admin-sidebar-action admin-sidebar-action--back"
+            onClick={() => { navigate('/'); closeSidebar(); }}
           >
             <ArrowLeft size={16} /> Voltar ao site
           </button>
           <button
+            className="admin-sidebar-action admin-sidebar-action--logout"
             onClick={handleLogout}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', width: '100%' }}
           >
             <LogOut size={16} /> Sair
           </button>
         </div>
       </aside>
 
-      {/* Mobile top bar */}
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 300, background: 'var(--c1)', borderBottom: '1px solid var(--c3)', display: 'flex', alignItems: 'center', padding: '0 16px', height: 56 }} className="hide-lg">
-        <button onClick={() => setMenuOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--txt)', cursor: 'pointer' }}>
-          <Menu size={24} />
-        </button>
-        <span style={{ marginLeft: 12, fontFamily: 'var(--font-brand)', color: 'var(--roxo-c)' }}>Admin</span>
-      </div>
-
-      {/* Mobile drawer */}
-      {menuOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.7)' }} onClick={() => setMenuOpen(false)}>
-          <div style={{ ...sidebarStyle, position: 'absolute', top: 0, left: 0 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px 24px', alignItems: 'center' }}>
-              <span style={{ fontFamily: 'var(--font-brand)', fontSize: '1.1rem', color: 'var(--roxo-c)' }}>Admin Panel</span>
-              <button onClick={() => setMenuOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--t2)', cursor: 'pointer' }}><X size={20} /></button>
-            </div>
-            <nav style={{ flex: 1 }}>
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  onClick={() => setMenuOpen(false)}
-                  style={({ isActive }) => navLinkStyle(isActive)}
-                >
-                  {item.icon}{item.label}
-                </NavLink>
-              ))}
-            </nav>
-            <div style={{ borderTop: '1px solid var(--c3)', paddingTop: 8 }}>
-              <button onClick={() => { navigate('/'); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', color: 'var(--roxo-c)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, width: '100%' }}>
-                <ArrowLeft size={16} /> Voltar ao site
-              </button>
-              <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', color: 'var(--t2)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', width: '100%' }}>
-                <LogOut size={16} /> Sair
-              </button>
-            </div>
-          </div>
-        </div>
+      {isMobileSidebarOpen && (
+        <button
+          type="button"
+          className="admin-sidebar-overlay"
+          onClick={closeSidebar}
+          aria-label="Fechar menu"
+        />
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 56, minWidth: 0 }} className="admin-content">
-        <style>{`.hide-lg { display: flex; } @media (min-width: 1024px) { .hide-lg { display: none !important; } .admin-content { padding-top: 0 !important; } }`}</style>
-        <main style={{ flex: 1, padding: '24px 16px', overflowY: 'auto' }}>
+      <main className="admin-main">
+        <header className="admin-mobile-header">
+          <button
+            type="button"
+            className="admin-menu-button"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            aria-label="Abrir menu"
+          >
+            ☰
+          </button>
+          <strong style={{ fontFamily: 'var(--font-brand)', color: 'var(--roxo-c)' }}>Admin</strong>
+        </header>
+
+        <div className="admin-page-content">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
 
       <Toast />
+      <style>{adminLayoutStyles}</style>
     </div>
   );
 }
+
+const adminLayoutStyles = `
+  .admin-layout {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    background: var(--bg);
+  }
+
+  .admin-sidebar {
+    background: var(--c1);
+    border-right: 1px solid var(--c3);
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .admin-sidebar-brand {
+    padding: 24px 20px 20px;
+    font-family: var(--font-brand);
+    font-size: 1.1rem;
+    color: var(--roxo-c);
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--c3);
+    margin-bottom: 8px;
+  }
+
+  .admin-sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .admin-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: var(--t2);
+    background: transparent;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all var(--transition);
+  }
+
+  .admin-nav-link:hover {
+    color: var(--txt);
+    background: var(--c2);
+  }
+
+  .admin-nav-link--active {
+    color: var(--roxo-c);
+    background: var(--c2);
+    border-left-color: var(--roxo-v);
+  }
+
+  .admin-sidebar-footer {
+    border-top: 1px solid var(--c3);
+    padding-top: 8px;
+    flex-shrink: 0;
+  }
+
+  .admin-sidebar-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    width: 100%;
+    text-align: left;
+    transition: color 0.15s;
+  }
+
+  .admin-sidebar-action--back {
+    color: var(--roxo-c);
+  }
+
+  .admin-sidebar-action--logout {
+    color: var(--t2);
+    font-weight: 400;
+  }
+
+  .admin-sidebar-action--logout:hover {
+    color: #f87171;
+  }
+
+  .admin-main {
+    min-width: 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  .admin-mobile-header {
+    display: none;
+  }
+
+  .admin-sidebar-overlay {
+    display: none;
+  }
+
+  .admin-page-content {
+    flex: 1;
+    padding: 24px;
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 1023px) {
+    .admin-layout {
+      display: block;
+    }
+
+    .admin-sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 120;
+      width: min(280px, 82vw);
+      height: 100%;
+      transform: translateX(-105%);
+      transition: transform 0.22s ease;
+      box-shadow: 24px 0 70px rgba(0, 0, 0, 0.45);
+    }
+
+    .admin-sidebar.is-open {
+      transform: translateX(0);
+    }
+
+    .admin-sidebar-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      border: 0;
+      padding: 0;
+      background: rgba(0, 0, 0, 0.58);
+      cursor: pointer;
+    }
+
+    .admin-mobile-header {
+      position: sticky;
+      top: 0;
+      z-index: 80;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px;
+      background: rgba(16, 16, 18, 0.96);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0;
+    }
+
+    .admin-menu-button {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .admin-page-content {
+      padding: 16px 14px 32px;
+    }
+  }
+`;
