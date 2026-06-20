@@ -17,11 +17,10 @@ interface Props {
 
 export function CustomerOrderDetailsModal({ order, onClose }: Props) {
   const total = getOrderTotal(order);
+  const items = order.items ?? [];
   const subtotal = order.subtotal ?? items.reduce((acc, item) => acc + Number(item.totalAmount ?? 0), 0);
   const deliveryFee = order.deliveryFee ?? 0;
-  const discount = 0; // Campo de desconto não disponível na API de cliente
-
-  const items = order.items ?? [];
+  const discount = 0;
 
   const deliveryInfo = order.deliveryZoneName
     ? `Entrega em: ${order.deliveryZoneName}`
@@ -52,11 +51,11 @@ export function CustomerOrderDetailsModal({ order, onClose }: Props) {
             </div>
             <div className="codm-grid-item">
               <span>Pagamento</span>
-              <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
+              <strong>{getPaymentMethodLabel(order.paymentMethod ?? undefined)}</strong>
             </div>
             <div className="codm-grid-item">
               <span>Status Pagamento</span>
-              <strong>{getPaymentStatusLabel(order.paymentStatus)}</strong>
+              <strong>{getPaymentStatusLabel(order.paymentStatus ?? undefined)}</strong>
             </div>
           </section>
 
@@ -68,8 +67,8 @@ export function CustomerOrderDetailsModal({ order, onClose }: Props) {
                   <div className="codm-item-header">
                     <span className="codm-item-quantity">{item.quantity}x</span>
                     <span className="codm-item-name">
-                      {Number(item.totalAmount ?? 0) === 0 && item.itemDescription
-                        ? item.itemDescription
+                      {Number(item.totalAmount ?? 0) === 0 && item.notes
+                        ? item.notes
                         : item.productName}
                     </span>
                     <strong className="codm-item-price">{formatBRL(Number(item.totalAmount ?? 0))}</strong>
@@ -77,12 +76,12 @@ export function CustomerOrderDetailsModal({ order, onClose }: Props) {
                   {item.variantName && (
                     <p className="codm-item-variant">Tamanho: {item.variantName}</p>
                   )}
-                  {item.options && item.options.length > 0 && (
+                  {item.selectedOptions && item.selectedOptions.length > 0 && (
                     <div className="codm-item-options">
                       <strong>Adicionais:</strong>
                       <ul>
-                        {item.options.map(opt => (
-                          <li key={opt.optionId}>{opt.optionName}</li>
+                        {item.selectedOptions.map((opt, idx) => (
+                          <li key={idx}>{opt.optionName}</li>
                         ))}
                       </ul>
                     </div>
@@ -96,10 +95,10 @@ export function CustomerOrderDetailsModal({ order, onClose }: Props) {
             <h3 className="codm-section-title">Resumo Financeiro</h3>
             <div className="codm-totals-grid">
               <span>Subtotal</span>
-              <span>{formatBRL(subtotal)}</span>
+              <span>{formatBRL(Number(subtotal))}</span>
 
               <span>Taxa de Entrega</span>
-              <span>{deliveryFee > 0 ? formatBRL(deliveryFee) : 'Grátis'}</span>
+              <span>{Number(deliveryFee) > 0 ? formatBRL(Number(deliveryFee)) : 'Grátis'}</span>
 
               <span>Desconto</span>
               <span className="codm-discount">{formatBRL(discount)}</span>
@@ -131,5 +130,3 @@ export function CustomerOrderDetailsModal({ order, onClose }: Props) {
     </div>
   );
 }
-
-```

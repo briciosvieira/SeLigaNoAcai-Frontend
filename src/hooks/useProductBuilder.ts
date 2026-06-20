@@ -88,7 +88,7 @@ export function useProductBuilder() {
     const options = getGroupOptions(group);
     const maxSelected = getGroupMaxSelected(group, options.length);
 
-    const additionalPrice = Number(option.additionalPrice ?? option.price ?? 0);
+    const additionalPrice = Number(option.additionalPrice ?? 0);
 
     setSelectedOptions((current) => {
       const alreadySelected = current.some(

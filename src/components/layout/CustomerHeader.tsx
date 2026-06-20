@@ -1,1 +1,3 @@
-nao yrm nada, ta vaxio
+export function CustomerHeader() {
+  return null;
+}

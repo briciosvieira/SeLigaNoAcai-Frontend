@@ -19,8 +19,8 @@ export function CustomerOrderCard({ order, onViewDetails }: CustomerOrderCardPro
   const formattedDate = formatDateTime(order.createdAt);
   const statusLabel = getOrderStatusLabel(order.orderStatus ?? order.status);
   const statusClass = getOrderStatusClass(order.orderStatus ?? order.status);
-  const paymentMethodLabel = getPaymentMethodLabel(order.paymentMethod);
-  const paymentStatusLabel = getPaymentStatusLabel(order.paymentStatus);
+  const paymentMethodLabel = getPaymentMethodLabel(order.paymentMethod ?? undefined);
+  const paymentStatusLabel = getPaymentStatusLabel(order.paymentStatus ?? undefined);
   const itemsCount = order.items?.length ?? 0;
   const items = order.items ?? [];
 

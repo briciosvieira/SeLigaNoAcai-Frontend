@@ -132,7 +132,7 @@ export function useCheckout(onClose: () => void, promotionalTotal: number) {
       attempts += 1;
 
       try {
-        const payment = await getPaymentByOrderIdRequest(orderId);
+        const payment = await getPaymentByOrderIdRequest(orderId as string);
         const normalized = normalizePixPayload(payment);
         if (normalized.copyPasteCode) {
           if (!cancelled) {
