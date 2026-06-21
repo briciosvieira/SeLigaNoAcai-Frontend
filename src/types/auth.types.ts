@@ -12,6 +12,8 @@ export type AuthUser = {
   avatarUrl?: string | null;
   googleAvatarUrl?: string | null;
   customerCode?: string | null;
+  termsAcceptedAt?: string | null;
+  privacyAcceptedAt?: string | null;
 };
 
 export type AuthResponse = {

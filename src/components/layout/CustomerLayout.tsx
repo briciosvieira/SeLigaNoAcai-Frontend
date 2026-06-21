@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
@@ -6,10 +6,28 @@ import { Toast } from '@/components/ui/Toast';
 import { useAuthStore } from '@/store/auth.store';
 import { useLoyaltyStore } from '@/store/loyalty.store';
 import { getMyLoyaltyRequest } from '@/services/loyalty.service';
+import { acceptLegalTermsRequest } from '@/services/auth.service';
 
 export function CustomerLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isGuest = useAuthStore((s) => s.isGuest);
+  const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const setLoyalty = useLoyaltyStore((s) => s.set);
+  const [acceptingTerms, setAcceptingTerms] = useState(false);
+
+  const needsTermsAcceptance =
+    isAuthenticated && !isGuest && user?.termsAcceptedAt == null;
+
+  async function handleAcceptTerms() {
+    setAcceptingTerms(true);
+    try {
+      const updated = await acceptLegalTermsRequest();
+      updateUser(updated);
+    } finally {
+      setAcceptingTerms(false);
+    }
+  }
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -41,6 +59,57 @@ export function CustomerLayout() {
       </div>
 
       <Toast />
+
+      {needsTermsAcceptance && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 2000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 16,
+          background: 'rgba(0,0,0,0.88)',
+          backdropFilter: 'blur(6px)',
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #1e0a30, #12051a)',
+            borderRadius: 20, padding: '32px 28px',
+            width: '100%', maxWidth: 420,
+            border: '1px solid rgba(255,255,255,0.12)',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: 10, color: '#fff' }}>
+              Termos de Uso e Privacidade
+            </h2>
+            <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.65, marginBottom: 24 }}>
+              Para continuar usando o Se Liga no Açaí, você precisa aceitar nossos termos.
+              Leia os documentos antes de confirmar:
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 24 }}>
+              <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer"
+                style={{ color: '#d8b4fe', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none' }}>
+                Termos de Uso ↗
+              </a>
+              <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer"
+                style={{ color: '#d8b4fe', fontWeight: 700, fontSize: '0.82rem', textDecoration: 'none' }}>
+                Política de Privacidade ↗
+              </a>
+            </div>
+            <button
+              type="button"
+              onClick={handleAcceptTerms}
+              disabled={acceptingTerms}
+              style={{
+                width: '100%', padding: '13px',
+                background: acceptingTerms ? 'rgba(91,26,138,0.5)' : 'var(--roxo-v, #7c3aed)',
+                border: 'none', borderRadius: 10,
+                color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+                cursor: acceptingTerms ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {acceptingTerms ? 'Registrando...' : 'Li e aceito os termos'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <style>{layoutStyles}</style>
     </>

@@ -43,3 +43,12 @@ export async function changeMyPasswordRequest(
   const response = await api.patch('/auth/me/password', payload);
   return response.data.data;
 }
+
+export async function acceptLegalTermsRequest(): Promise<AuthUser> {
+  const response = await api.post('/auth/me/legal-acceptance', {
+    termsAccepted: true,
+    privacyAccepted: true,
+    termsVersion: '1.0',
+  });
+  return response.data.data;
+}

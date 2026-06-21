@@ -4,6 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/auth.store';
+import { acceptLegalTermsRequest } from '@/services/auth.service';
 
 const schema = z.object({
   fullName: z.string().min(3, 'Mínimo 3 caracteres'),
@@ -24,6 +26,7 @@ type Props = {
 
 export function RegisterModal({ onClose }: Props) {
   const { register: registerUser, isLoading, error } = useAuth();
+  const updateUser = useAuthStore((s) => s.updateUser);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const {
@@ -39,6 +42,8 @@ export function RegisterModal({ onClose }: Props) {
       phone: data.phone.trim(),
       password: data.password,
     }).catch(() => {});
+    // Se o registro teve sucesso, o token já está no store — registrar o aceite imediatamente
+    acceptLegalTermsRequest().then((u) => updateUser(u)).catch(() => {});
   }
 
   return (

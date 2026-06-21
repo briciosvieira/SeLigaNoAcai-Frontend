@@ -638,29 +638,26 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
           .pm-footer { padding: 12px 20px 16px; }
         }
 
-        /* Mobile — bottom sheet */
+        /* Mobile — centralizado na área útil */
         @media (max-width: 560px) {
           .pm-overlay {
-            align-items: flex-end;
-            padding: 0;
+            align-items: center;
+            justify-content: center;
+            padding: 72px 12px 88px;
           }
           .pm-modal {
             width: 100%;
-            max-height: 94dvh;
+            max-height: calc(100dvh - 160px);
             height: auto;
-            border-radius: 5px 5px 0 0;
-            grid-template-rows: 195px 1fr;
-            animation: pm-sheet-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-          }
-          @keyframes pm-sheet-in {
-            from { transform: translateY(100%); opacity: 0.85; }
-            to   { transform: translateY(0);    opacity: 1; }
+            border-radius: 22px;
+            grid-template-rows: 180px 1fr;
+            animation: pm-scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
           }
           .pm-title { font-size: 1.1rem; }
           .pm-body { padding: 16px 16px 0; }
           .pm-footer {
             flex-wrap: wrap;
-            padding: 12px 16px env(safe-area-inset-bottom, 18px);
+            padding: 12px 16px 16px;
             gap: 8px;
           }
           .pm-qty { order: 1; }
@@ -669,7 +666,7 @@ export function ProductBuilderModal({ builder, onAddToCart }: Props) {
             order: 3;
             width: 100%;
             height: 50px;
-            border-radius: 5px;
+            border-radius: 12px;
             font-size: 0.925rem;
           }
         }
