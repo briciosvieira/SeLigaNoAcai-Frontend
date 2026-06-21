@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomerProfile } from '@/hooks/useCustomerProfile';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuthStore } from '@/store/auth.store';
+import { useLoyaltyStore } from '@/store/loyalty.store';
 import { formatBRL } from '@/utils/currency.util';
-import { LogOut, ShieldCheck, LayoutDashboard, ChevronRight } from 'lucide-react';
+import { resolveImageUrl } from '@/utils/image-url.util';
+import { uploadCustomerAvatarRequest, updateMeRequest } from '@/services/profile.service';
+import { LogOut, ShieldCheck, LayoutDashboard, ChevronRight, Gift, Camera, Copy, Check } from 'lucide-react';
 import type { AdminPermission } from '@/types/admin.types';
 import '@/styles/customer-profile.css';
 
@@ -23,6 +27,8 @@ const permissionLabels: Record<AdminPermission, string> = {
 export function ProfilePage() {
   const navigate = useNavigate();
   const { user: authUser, logout, isLoading: isLoggingOut } = useAuth();
+  const updateUser = useAuthStore((s) => s.updateUser);
+  const loyaltyEnabled = useLoyaltyStore((s) => s.isEnabled);
 
   const {
     me,
@@ -47,10 +53,47 @@ export function ProfilePage() {
     confirmPassword: '',
   });
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = authUser?.role === 'ADMIN';
   const isStaff = authUser?.role === 'STAFF';
   const hasAdminAccess = isAdmin || isStaff;
+  const isNonAdminCustomer = !hasAdminAccess;
+
+  const resolvedAvatar = resolveImageUrl(authUser?.avatarUrl ?? authUser?.googleAvatarUrl ?? me?.avatarUrl ?? me?.googleAvatarUrl);
+  const initials = (authUser?.fullName ?? '').split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase() || '?';
+  const customerCode = authUser?.customerCode ?? me?.customerCode ?? null;
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    setAvatarError(null);
+    try {
+      const { url } = await uploadCustomerAvatarRequest(file);
+      const updated = await updateMeRequest({ avatarUrl: url });
+      updateUser({ avatarUrl: updated.avatarUrl ?? url });
+    } catch {
+      setAvatarError('Não foi possível enviar a foto. Tente novamente.');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  }
+
+  async function handleCopyCode() {
+    if (!customerCode) return;
+    try {
+      await navigator.clipboard.writeText(customerCode);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      // fallback — do nothing
+    }
+  }
 
   async function handleChangePassword() {
     setPasswordError(null);
@@ -86,11 +129,58 @@ export function ProfilePage() {
 
   return (
     <main className="customer-profile-page">
-      <div className="customer-profile-header">
-        <h1 className="customer-profile-title">Meu Perfil</h1>
-        <p className="customer-profile-subtitle">
-          Mantenha seus dados atualizados para agilizar seus pedidos.
-        </p>
+      {/* Identity card */}
+      <div className="customer-profile-identity">
+        <div className="customer-profile-avatar-wrap">
+          {resolvedAvatar ? (
+            <img src={resolvedAvatar} alt="Foto de perfil" className="customer-profile-avatar" />
+          ) : (
+            <div className="customer-profile-avatar customer-profile-avatar--initials">
+              {initials}
+            </div>
+          )}
+          <button
+            type="button"
+            className="customer-profile-avatar-btn"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={isUploadingAvatar}
+            aria-label="Alterar foto de perfil"
+          >
+            <Camera size={14} />
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={(e) => void handleAvatarUpload(e)}
+          />
+        </div>
+
+        <div className="customer-profile-identity-info">
+          <p className="customer-profile-identity-name">{authUser?.fullName ?? '—'}</p>
+          <p className="customer-profile-identity-email">{authUser?.email ?? ''}</p>
+          {customerCode && (
+            <div className="customer-profile-code-row">
+              <span className="customer-profile-code-label">Código:</span>
+              <span className="customer-profile-code-value">{customerCode}</span>
+              <button
+                type="button"
+                className="customer-profile-code-copy"
+                onClick={() => void handleCopyCode()}
+                aria-label="Copiar código"
+              >
+                {codeCopied ? <Check size={13} /> : <Copy size={13} />}
+              </button>
+            </div>
+          )}
+          {isUploadingAvatar && (
+            <p className="customer-profile-avatar-uploading">Enviando foto…</p>
+          )}
+          {avatarError && (
+            <p className="customer-profile-avatar-error">{avatarError}</p>
+          )}
+        </div>
       </div>
 
       {/* Admin access card */}
@@ -142,6 +232,26 @@ export function ProfilePage() {
       )}
       {successMessage && (
         <p className="customer-profile-message success">{successMessage}</p>
+      )}
+
+      {/* Loyalty card — only for non-admin customers when loyalty is enabled */}
+      {isNonAdminCustomer && loyaltyEnabled === true && (
+        <div className="customer-profile-loyalty-card">
+          <div className="customer-profile-loyalty-left">
+            <Gift size={20} color="var(--am)" />
+            <div>
+              <p className="customer-profile-loyalty-title">Programa de Fidelidade</p>
+              <p className="customer-profile-loyalty-sub">Acumule selos e ganhe brindes exclusivos</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="customer-profile-loyalty-btn"
+            onClick={() => navigate('/loyalty')}
+          >
+            Ver programa <ChevronRight size={14} />
+          </button>
+        </div>
       )}
 
       <div className="customer-profile-grid">

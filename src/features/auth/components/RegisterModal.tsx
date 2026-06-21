@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,6 +24,7 @@ type Props = {
 
 export function RegisterModal({ onClose }: Props) {
   const { register: registerUser, isLoading, error } = useAuth();
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const {
     register,
@@ -129,35 +131,51 @@ export function RegisterModal({ onClose }: Props) {
             </p>
           )}
 
+          {/* Aceite dos termos */}
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              style={{ marginTop: 3, accentColor: 'var(--roxo-v)', flexShrink: 0, width: 16, height: 16, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.78rem', color: 'var(--t2)', lineHeight: 1.55 }}>
+              Li e aceito os{' '}
+              <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--roxo-c)', fontWeight: 700, textDecoration: 'none' }}>
+                Termos de Uso
+              </a>
+              {' '}e a{' '}
+              <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--roxo-c)', fontWeight: 700, textDecoration: 'none' }}>
+                Política de Privacidade
+              </a>
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !termsAccepted}
             style={{
               width: '100%',
               padding: '13px',
-              background: isLoading ? 'var(--c3)' : 'var(--roxo-v)',
+              background: (isLoading || !termsAccepted) ? 'var(--c3)' : 'var(--roxo-v)',
               border: 'none',
               borderRadius: 'var(--r-md)',
               color: '#fff',
               fontWeight: 700,
               fontSize: '0.95rem',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
+              cursor: (isLoading || !termsAccepted) ? 'not-allowed' : 'pointer',
               marginTop: 4,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
               transition: 'background 0.2s',
+              opacity: !termsAccepted ? 0.6 : 1,
             }}
           >
             {isLoading ? <Spinner /> : 'Criar minha conta'}
           </button>
         </form>
-
-        <p style={{ textAlign: 'center', marginTop: 16, fontSize: '0.75rem', color: 'var(--t3)', lineHeight: 1.5 }}>
-          Ao criar sua conta você concorda com nossos{' '}
-          <span style={{ color: 'var(--roxo-c)' }}>termos de uso</span>.
-        </p>
       </div>
     </div>
   );

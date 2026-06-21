@@ -20,7 +20,7 @@ export function BottomNav() {
     { to: '/search', label: 'Buscar', icon: <Search size={22} /> },
     { to: '/orders', label: 'Pedidos', icon: <ClipboardList size={22} /> },
     { to: '/cart', label: 'Carrinho', icon: <ShoppingCart size={22} />, badge: itemCount },
-    ...(loyaltyEnabled === true
+    ...(loyaltyEnabled !== false
       ? [{ to: '/loyalty', label: 'Fidelidade', icon: <Gift size={22} /> }]
       : []),
     { to: '/profile', label: 'Perfil', icon: <User size={22} /> },

@@ -9,6 +9,9 @@ export type AuthUser = {
   permissions?: AdminPermission[];
   isActive: boolean;
   createdAt: string;
+  avatarUrl?: string | null;
+  googleAvatarUrl?: string | null;
+  customerCode?: string | null;
 };
 
 export type AuthResponse = {

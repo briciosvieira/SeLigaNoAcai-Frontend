@@ -20,7 +20,7 @@ export function CustomerLayout() {
       .then((res) => {
         setLoyalty({
           isEnabled: res.settings.isEnabled,
-          availableRewards: res.card.availableRewards,
+          availableRewards: res.availableRewards ?? 0,
         });
       })
       .catch(() => {

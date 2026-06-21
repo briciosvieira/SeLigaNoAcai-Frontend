@@ -5,6 +5,8 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 
 import { CustomerErrorPage } from '@/pages/CustomerErrorPage';
+import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage';
+import { TermsOfUsePage } from '@/pages/TermsOfUsePage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { HomePage } from '@/features/catalog/pages/HomePage';
 import { LocationPage } from '@/features/location/pages/LocationPage';
@@ -24,12 +26,15 @@ import { AdminStorePage } from '@/features/admin/store/pages/AdminStorePage';
 import { AdminDeliveryZonesPage } from '@/features/admin/delivery-zones/pages/AdminDeliveryZonesPage';
 import { AdminPromotionsPage } from '@/features/admin/promotions/pages/AdminPromotionsPage';
 import { AdminLoyaltyPage } from '@/features/admin/loyalty/pages/AdminLoyaltyPage';
+import { AdminAnnouncementsPage } from '@/features/admin/announcements/pages/AdminAnnouncementsPage';
 
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
     children: [
       { path: '/login', element: <LoginPage /> },
+      { path: '/politica-de-privacidade', element: <PrivacyPolicyPage /> },
+      { path: '/termos-de-uso', element: <TermsOfUsePage /> },
 
       /* Rotas do cliente */
       {
@@ -73,6 +78,7 @@ export const router = createBrowserRouter([
                   { path: '/admin/delivery-zones', element: <AdminDeliveryZonesPage /> },
                   { path: '/admin/promotions', element: <AdminPromotionsPage /> },
                   { path: '/admin/loyalty', element: <AdminLoyaltyPage /> },
+                  { path: '/admin/announcements', element: <AdminAnnouncementsPage /> },
                 ],
               },
               {

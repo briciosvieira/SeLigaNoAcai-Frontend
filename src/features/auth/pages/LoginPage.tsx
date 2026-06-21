@@ -22,6 +22,7 @@ export function LoginPage() {
   const { login, googleLogin, continueAsGuest, isLoading, error, clearError } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [pendingGoogleCredential, setPendingGoogleCredential] = useState<string | null>(null);
 
   const {
     register,
@@ -35,8 +36,19 @@ export function LoginPage() {
 
   function handleGoogleSuccess(cr: CredentialResponse) {
     if (cr.credential) {
-      googleLogin(cr.credential).catch(() => {});
+      setPendingGoogleCredential(cr.credential);
     }
+  }
+
+  function handleGoogleConsentAccept() {
+    if (pendingGoogleCredential) {
+      googleLogin(pendingGoogleCredential).catch(() => {});
+      setPendingGoogleCredential(null);
+    }
+  }
+
+  function handleGoogleConsentCancel() {
+    setPendingGoogleCredential(null);
   }
 
   function handleOpenRegister() {
@@ -215,12 +227,84 @@ export function LoginPage() {
                 </button>
               </p>
 
+              {/* Links legais */}
+              <p style={{ textAlign: 'center', marginTop: 24, fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', lineHeight: 1.6 }}>
+                <a href="/termos-de-uso" style={{ color: 'rgba(216,180,254,0.55)', textDecoration: 'none' }}>Termos de Uso</a>
+                {' · '}
+                <a href="/politica-de-privacidade" style={{ color: 'rgba(216,180,254,0.55)', textDecoration: 'none' }}>Política de Privacidade</a>
+              </p>
+
             </div>
           </main>
         </div>
       </div>
 
       {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
+
+      {pendingGoogleCredential && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)',
+          }}
+        >
+          <div style={{
+            background: 'var(--c1, #1a0a28)',
+            borderRadius: 20, padding: '32px 28px',
+            width: '100%', maxWidth: 400,
+            border: '1px solid rgba(255,255,255,0.12)',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔐</div>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: 10, color: '#fff' }}>
+              Antes de continuar com o Google
+            </h2>
+            <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 24 }}>
+              Para criar ou acessar sua conta, você precisa aceitar nossos termos.
+              Ao continuar, você concorda com os{' '}
+              <a href="/termos-de-uso" target="_blank" rel="noopener noreferrer" style={{ color: '#d8b4fe', fontWeight: 700, textDecoration: 'none' }}>
+                Termos de Uso
+              </a>
+              {' '}e a{' '}
+              <a href="/politica-de-privacidade" target="_blank" rel="noopener noreferrer" style={{ color: '#d8b4fe', fontWeight: 700, textDecoration: 'none' }}>
+                Política de Privacidade
+              </a>
+              .
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={handleGoogleConsentCancel}
+                style={{
+                  flex: 1, padding: '12px',
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: 10, color: 'rgba(255,255,255,0.55)',
+                  fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleGoogleConsentAccept}
+                style={{
+                  flex: 2, padding: '12px',
+                  background: 'var(--roxo-v, #7c3aed)',
+                  border: 'none',
+                  borderRadius: 10, color: '#fff',
+                  fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer',
+                }}
+              >
+                Aceitar e entrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{loginStyles}</style>
     </>

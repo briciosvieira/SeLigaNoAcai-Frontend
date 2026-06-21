@@ -7,6 +7,7 @@ import { useLoyaltyStore } from '@/store/loyalty.store';
 import { useAuth } from '@/hooks/useAuth';
 import { useCurrentStore } from '@/hooks/useCurrentStore';
 import { buildWhatsAppUrl } from '@/utils/whatsapp';
+import { resolveImageUrl } from '@/utils/image-url.util';
 
 export function Header() {
   const navigate = useNavigate();
@@ -15,10 +16,13 @@ export function Header() {
   const loyaltyEnabled = useLoyaltyStore((s) => s.isEnabled);
   const { logout } = useAuth();
 
+  const avatarSrc = resolveImageUrl(user?.avatarUrl ?? user?.googleAvatarUrl);
+  const initials = (user?.fullName ?? '').split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase() || null;
+
   const desktopNavItems = [
     { to: '/', label: 'Início', end: true },
     { to: '/orders', label: 'Pedidos', end: false },
-    ...(loyaltyEnabled === true ? [{ to: '/loyalty', label: 'Fidelidade', end: false }] : []),
+    ...(loyaltyEnabled !== false ? [{ to: '/loyalty', label: 'Fidelidade', end: false }] : []),
   ];
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -92,7 +96,13 @@ export function Header() {
                     aria-expanded={dropdownOpen}
                     aria-label="Menu do usuário"
                   >
-                    <User size={15} />
+                    {avatarSrc ? (
+                      <img src={avatarSrc} alt="" className="header-user-avatar" />
+                    ) : initials ? (
+                      <span className="header-user-avatar header-user-avatar--initials">{initials}</span>
+                    ) : (
+                      <User size={15} />
+                    )}
                     <span>{user?.fullName?.split(' ')[0]}</span>
                     <ChevronDown size={12} className={`header-chevron${dropdownOpen ? ' header-chevron--up' : ''}`} />
                   </button>
@@ -319,6 +329,26 @@ const headerStyles = `
   }
   .header-user-btn:hover,
   .header-user-btn--open { background: var(--c3); border-color: var(--roxo-v); }
+
+  .header-user-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .header-user-avatar--initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7e22ce, #a855f7);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 900;
+    width: 22px;
+    height: 22px;
+  }
 
   .header-chevron {
     transition: transform 0.2s;

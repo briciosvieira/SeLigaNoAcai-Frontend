@@ -11,6 +11,7 @@ import { FullPageSpinner } from '@/components/ui/Spinner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { BannerCarousel } from '@/components/banner/BannerCarousel';
 import { ProductBuilderModal } from '../components/ProductBuilderModal';
+import { AnnouncementModal } from '@/components/announcement/AnnouncementModal';
 import { formatCurrency } from '@/utils/currency.util';
 import { getImageUrl } from '@/utils/image-url.util';
 import { MapPin, Search, Package, ChevronRight } from 'lucide-react';
@@ -264,6 +265,30 @@ export function HomePage() {
 
       {/* Modal de montagem */}
       <ProductBuilderModal builder={builder} onAddToCart={handleAddToCart} />
+
+      {/* Modal informativo */}
+      <AnnouncementModal />
+
+      {/* Footer legal */}
+      <footer style={{
+        padding: '20px 16px 8px',
+        textAlign: 'center',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        marginTop: 8,
+      }}>
+        <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.22)', marginBottom: 6 }}>
+          Se Liga no Açaí · Peça online com comodidade
+        </p>
+        <p style={{ fontSize: '0.7rem', lineHeight: 1.8 }}>
+          <a href="/termos-de-uso" style={{ color: 'rgba(216,180,254,0.45)', textDecoration: 'none', fontWeight: 600 }}>
+            Termos de Uso
+          </a>
+          {' · '}
+          <a href="/politica-de-privacidade" style={{ color: 'rgba(216,180,254,0.45)', textDecoration: 'none', fontWeight: 600 }}>
+            Política de Privacidade
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }

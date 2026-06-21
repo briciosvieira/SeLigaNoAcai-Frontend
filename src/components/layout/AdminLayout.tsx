@@ -12,6 +12,7 @@ import {
   MapPin,
   Tag,
   Gift,
+  Megaphone,
   LogOut,
   ArrowLeft,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ export function AdminLayout() {
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
     { to: '/admin/orders', label: 'Pedidos', icon: <ClipboardList size={18} /> },
     { to: '/admin/banners', label: 'Banners', icon: <Images size={18} /> },
+    { to: '/admin/announcements', label: 'Informativos', icon: <Megaphone size={18} /> },
     ...(canManageProducts ? [
       { to: '/admin/products', label: 'Produtos', icon: <Package size={18} />, end: false },
       { to: '/admin/options', label: 'Adicionais', icon: <Settings2 size={18} />, end: false },

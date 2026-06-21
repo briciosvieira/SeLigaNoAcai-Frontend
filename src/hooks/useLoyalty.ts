@@ -18,7 +18,8 @@ export function useLoyalty() {
       setData(result);
       const enabled = result.settings.isEnabled;
       setIsDisabled(!enabled);
-      setStore({ isEnabled: enabled, availableRewards: result.card.availableRewards });
+      const rewards = result.availableRewards ?? 0;
+      setStore({ isEnabled: enabled, availableRewards: rewards });
     } catch (err) {
       const status = (err as { response?: { status?: number } }).response?.status;
       if (status === 404 || status === 403) {

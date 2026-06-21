@@ -12,11 +12,15 @@ export type CustomerMe = {
   authProvider?: AuthProvider | null;
   createdAt: string;
   updatedAt?: string;
+  avatarUrl?: string | null;
+  googleAvatarUrl?: string | null;
+  customerCode?: string | null;
 };
 
 export type UpdateMePayload = {
   fullName?: string;
   phone?: string;
+  avatarUrl?: string | null;
 };
 
 export type UpdateMyPasswordPayload = {

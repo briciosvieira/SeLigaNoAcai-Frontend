@@ -5,27 +5,13 @@ import { useAuthStore } from '@/store/auth.store';
 import { FullPageSpinner } from '@/components/ui/Spinner';
 import { formatBRL } from '@/utils/currency.util';
 import { resolveImageUrl } from '@/utils/image-url.util';
+import type { LoyaltyCurrentCard, LoyaltyCardStatus } from '@/types/loyalty.types';
 import './LoyaltyPage.css';
 
-function LoyaltyStampGrid({ stamps, total }: { stamps: number; total: number }) {
-  return (
-    <div className="loyalty-stamp-grid">
-      {Array.from({ length: total }).map((_, index) => {
-        const filled = index < stamps;
-        return (
-          <div
-            key={index}
-            className={['loyalty-stamp', filled ? 'filled' : ''].filter(Boolean).join(' ')}
-          >
-            {filled ? '✓' : ''}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+/* ── Helpers ── */
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
   try {
     return new Date(iso).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -33,9 +19,134 @@ function formatDate(iso: string): string {
       year: 'numeric',
     });
   } catch {
-    return iso;
+    return String(iso);
   }
 }
+
+function getCardStatusLabel(status: string): string {
+  const s = String(status).toUpperCase();
+  if (s === 'ACTIVE') return 'Ativo';
+  if (s === 'COMPLETED') return 'Completo';
+  if (s === 'EXPIRED') return 'Expirado';
+  if (s === 'REDEEMED') return 'Brinde entregue';
+  return status;
+}
+
+function getCardStatusClass(status: string): string {
+  const s = String(status).toUpperCase() as LoyaltyCardStatus;
+  if (s === 'ACTIVE') return 'active';
+  if (s === 'COMPLETED') return 'completed';
+  if (s === 'EXPIRED') return 'expired';
+  if (s === 'REDEEMED') return 'redeemed';
+  return 'unknown';
+}
+
+/* ── Stamp grid — columns adapt to stampsRequired ── */
+
+function LoyaltyStampGrid({ stamps, total }: { stamps: number; total: number }) {
+  const cols = total <= 5 ? total : 5;
+  return (
+    <div
+      className="loyalty-stamp-grid"
+      style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+    >
+      {Array.from({ length: total }).map((_, index) => {
+        const filled = index < stamps;
+        return (
+          <div
+            key={index}
+            className={['loyalty-stamp', filled ? 'filled' : ''].filter(Boolean).join(' ')}
+          >
+            {filled && (
+              <svg viewBox="0 0 24 24" fill="none" className="loyalty-stamp-check">
+                <path
+                  d="M5 13l4 4L19 7"
+                  stroke="currentColor"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Card status badge ── */
+
+function CardStatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`loyalty-card-status-badge ${getCardStatusClass(status)}`}>
+      {getCardStatusLabel(status)}
+    </span>
+  );
+}
+
+/* ── Previous card item ── */
+
+function PreviousCardItem({
+  card,
+  index,
+  defaultReward,
+}: {
+  card: LoyaltyCurrentCard;
+  index: number;
+  defaultReward: string;
+}) {
+  const reward = card.rewardDescription ?? defaultReward;
+  const statusUp = String(card.status).toUpperCase();
+
+  const endDate =
+    statusUp === 'REDEEMED'
+      ? (card.redeemedAt ?? card.completedAt ?? card.expiresAt)
+      : (card.completedAt ?? card.expiresAt);
+
+  return (
+    <div className="loyalty-prev-card">
+      <div className="loyalty-prev-card-header">
+        <span className="loyalty-prev-card-number">Cartão #{index + 1}</span>
+        <CardStatusBadge status={card.status} />
+      </div>
+
+      <div className="loyalty-prev-card-grid">
+        <div className="loyalty-prev-card-item">
+          <span>Período</span>
+          <strong>
+            {formatDate(card.startedAt)}
+            {endDate ? ` – ${formatDate(endDate)}` : ''}
+          </strong>
+        </div>
+        <div className="loyalty-prev-card-item">
+          <span>Selos</span>
+          <strong>{card.stamps}/{card.stampsRequired}</strong>
+        </div>
+        {reward && (
+          <div className="loyalty-prev-card-item">
+            <span>Brinde</span>
+            <strong>{reward}</strong>
+          </div>
+        )}
+        {statusUp === 'REDEEMED' && card.redeemedAt && (
+          <div className="loyalty-prev-card-item">
+            <span>Retirado em</span>
+            <strong>{formatDate(card.redeemedAt)}</strong>
+          </div>
+        )}
+        {statusUp === 'EXPIRED' && card.expiresAt && (
+          <div className="loyalty-prev-card-item">
+            <span>Expirou em</span>
+            <strong>{formatDate(card.expiresAt)}</strong>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Main page ── */
 
 export function LoyaltyPage() {
   const navigate = useNavigate();
@@ -54,17 +165,22 @@ export function LoyaltyPage() {
   if (isDisabled) return null;
 
   const settings = data?.settings;
-  const card = data?.card;
-  const history = data?.history ?? [];
+  const currentCard = data?.currentCard ?? null;
+  const previousCards = data?.previousCards ?? [];
+  const availableRewards = data?.availableRewards ?? 0;
 
-  const firstName = (card?.customerName ?? user?.fullName ?? '').split(' ')[0];
-  const stampsRequired = settings?.stampsRequired ?? 10;
-  const stamps = card?.stamps ?? 0;
-  const availableRewards = card?.availableRewards ?? 0;
+  const customerName = data?.customerName ?? user?.fullName ?? '';
+  const firstName = customerName.split(' ')[0] || 'cliente';
+
+  const stampsRequired = currentCard?.stampsRequired ?? settings?.stampsRequired ?? 10;
+  const stamps = currentCard?.stamps ?? 0;
   const minAmount = Number(settings?.minOrderAmount ?? 0);
 
-  const resolvedCardImageUrl = !cardImageError ? resolveImageUrl(settings?.cardImageUrl) : null;
+  const isCompleted = currentCard?.status === 'COMPLETED';
+  const isActive = currentCard?.status === 'ACTIVE';
+  const hasCurrentCard = currentCard !== null && currentCard !== undefined;
 
+  const resolvedCardImageUrl = !cardImageError ? resolveImageUrl(settings?.cardImageUrl) : null;
   const cardStyle: React.CSSProperties = resolvedCardImageUrl
     ? { backgroundImage: `url(${resolvedCardImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : {};
@@ -78,8 +194,14 @@ export function LoyaltyPage() {
       <div className="loyalty-container">
         {/* Hero */}
         <div className="loyalty-hero">
-          <h1>Olá, {firstName || 'cliente'}!</h1>
+          <h1>Olá, {firstName}!</h1>
           <p>{settings?.description ?? defaultDesc}</p>
+          {settings?.validityMonths && (
+            <p className="loyalty-hero-validity">
+              Cartão válido por {settings.validityMonths}{' '}
+              {settings.validityMonths === 1 ? 'mês' : 'meses'} após a primeira compra.
+            </p>
+          )}
         </div>
 
         {/* Error */}
@@ -92,11 +214,58 @@ export function LoyaltyPage() {
           </div>
         )}
 
-        {/* Card virtual */}
-        {!error && card && (
+        {/* Available rewards banner */}
+        {!error && availableRewards > 0 && (
+          <div className="loyalty-rewards-banner">
+            <span className="loyalty-rewards-banner-icon">🎁</span>
+            <div>
+              <p className="loyalty-rewards-banner-title">
+                Você tem {availableRewards}{' '}
+                {availableRewards === 1 ? 'brinde disponível' : 'brindes disponíveis'}!
+              </p>
+              <p className="loyalty-rewards-banner-sub">
+                Apresente este app na loja para retirar seu brinde.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* No card yet — empty state */}
+        {!error && !hasCurrentCard && (
+          <div className="loyalty-empty-state">
+            <div className="loyalty-empty-icon">🛒</div>
+            <h2>Você ainda não iniciou seu cartão.</h2>
+            <p>
+              Faça uma compra acima de {formatBRL(minAmount)} para começar e ganhar seu primeiro
+              selo!
+            </p>
+          </div>
+        )}
+
+        {/* Current card */}
+        {!error && hasCurrentCard && (
           <>
+            {/* COMPLETED banner */}
+            {isCompleted && (
+              <div className="loyalty-completed-banner">
+                <span>🎉</span>
+                <div>
+                  <p className="loyalty-completed-banner-title">Brinde disponível!</p>
+                  <p className="loyalty-completed-banner-sub">
+                    Seu cartão está completo. Apresente este app na loja para retirar seu brinde.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Virtual card */}
             <div
-              className={`loyalty-card-virtual${resolvedCardImageUrl ? ' has-image' : ''}`}
+              className={[
+                'loyalty-card-virtual',
+                resolvedCardImageUrl ? 'has-image' : '',
+                isCompleted ? 'is-completed' : '',
+                isActive ? 'is-active' : '',
+              ].filter(Boolean).join(' ')}
               style={cardStyle}
             >
               {resolvedCardImageUrl && (
@@ -110,26 +279,31 @@ export function LoyaltyPage() {
               {resolvedCardImageUrl && <div className="loyalty-card-overlay" />}
 
               <div className="loyalty-card-content">
-                <p className="loyalty-card-eyebrow">Cartão Fidelidade</p>
+                <div className="loyalty-card-top-row">
+                  <p className="loyalty-card-eyebrow">Cartão Fidelidade</p>
+                  {currentCard.status && <CardStatusBadge status={currentCard.status} />}
+                </div>
+
                 <h2 className="loyalty-card-title">
                   {settings?.title ?? 'Se Liga no Açaí'}
                 </h2>
-                <p className="loyalty-card-customer">{card.customerName}</p>
+                <p className="loyalty-card-customer">{customerName}</p>
 
                 <LoyaltyStampGrid stamps={stamps} total={stampsRequired} />
 
                 <div className="loyalty-card-progress">
                   <span>{stamps}/{stampsRequired} selos</span>
-                  {availableRewards > 0 && (
-                    <div className="loyalty-reward-box">
-                      🎁 {availableRewards} {availableRewards === 1 ? 'brinde disponível' : 'brindes disponíveis'}
-                    </div>
-                  )}
                 </div>
 
-                {settings?.rewardDescription && (
+                {(currentCard.rewardDescription ?? settings?.rewardDescription) && (
                   <p className="loyalty-card-reward-desc">
-                    Brinde: {settings.rewardDescription}
+                    Brinde: {currentCard.rewardDescription ?? settings?.rewardDescription}
+                  </p>
+                )}
+
+                {currentCard.expiresAt && (
+                  <p className="loyalty-card-validity">
+                    Válido até {formatDate(currentCard.expiresAt)}
                   </p>
                 )}
               </div>
@@ -142,48 +316,60 @@ export function LoyaltyPage() {
                 <strong className="loyalty-info-value">{stamps}/{stampsRequired}</strong>
               </div>
               <div className="loyalty-info-box">
-                <span className="loyalty-info-label">Total conquistados</span>
-                <strong className="loyalty-info-value">{card.totalEarnedStamps}</strong>
-              </div>
-              <div className="loyalty-info-box">
                 <span className="loyalty-info-label">Brindes disponíveis</span>
-                <strong className="loyalty-info-value loyalty-reward-count">{availableRewards}</strong>
+                <strong className={`loyalty-info-value${availableRewards > 0 ? ' loyalty-reward-count' : ''}`}>
+                  {availableRewards}
+                </strong>
               </div>
-              <div className="loyalty-info-box">
-                <span className="loyalty-info-label">Compra mínima</span>
-                <strong className="loyalty-info-value">{formatBRL(minAmount)}</strong>
-              </div>
-            </div>
-
-            {/* History */}
-            {history.length > 0 && (
-              <div className="loyalty-history">
-                <h3 className="loyalty-history-title">Histórico</h3>
-                <div className="loyalty-history-list">
-                  {history.map((item) => {
-                    const isRedeem = item.type === 'REWARD_REDEEMED';
-                    return (
-                      <div key={item.id} className="loyalty-history-item">
-                        <div className="loyalty-history-info">
-                          {isRedeem ? (
-                            <span className="loyalty-history-type redeem">🎁 Brinde entregue</span>
-                          ) : (
-                            <span className={`loyalty-history-type ${item.quantity > 0 ? 'earned' : 'removed'}`}>
-                              {item.quantity > 0 ? `+${item.quantity}` : item.quantity} selo{Math.abs(item.quantity) !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {item.reason && (
-                            <span className="loyalty-history-reason">{item.reason}</span>
-                          )}
-                        </div>
-                        <span className="loyalty-history-date">{formatDate(item.createdAt)}</span>
-                      </div>
-                    );
-                  })}
+              {minAmount > 0 && (
+                <div className="loyalty-info-box">
+                  <span className="loyalty-info-label">Compra mínima</span>
+                  <strong className="loyalty-info-value">{formatBRL(minAmount)}</strong>
                 </div>
-              </div>
-            )}
+              )}
+              {currentCard.startedAt && (
+                <div className="loyalty-info-box">
+                  <span className="loyalty-info-label">Início</span>
+                  <strong className="loyalty-info-value loyalty-info-value--sm">
+                    {formatDate(currentCard.startedAt)}
+                  </strong>
+                </div>
+              )}
+              {currentCard.expiresAt && (
+                <div className="loyalty-info-box">
+                  <span className="loyalty-info-label">Validade</span>
+                  <strong className="loyalty-info-value loyalty-info-value--sm">
+                    {formatDate(currentCard.expiresAt)}
+                  </strong>
+                </div>
+              )}
+              {currentCard.completedAt && (
+                <div className="loyalty-info-box">
+                  <span className="loyalty-info-label">Completado em</span>
+                  <strong className="loyalty-info-value loyalty-info-value--sm">
+                    {formatDate(currentCard.completedAt)}
+                  </strong>
+                </div>
+              )}
+            </div>
           </>
+        )}
+
+        {/* Previous cards */}
+        {previousCards.length > 0 && (
+          <div className="loyalty-prev-cards">
+            <h3 className="loyalty-prev-cards-title">Cartões anteriores</h3>
+            <div className="loyalty-prev-cards-list">
+              {previousCards.map((card, i) => (
+                <PreviousCardItem
+                  key={card.id ?? i}
+                  card={card}
+                  index={i}
+                  defaultReward={settings?.rewardDescription ?? ''}
+                />
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -371,6 +371,13 @@
   flex-shrink: 0;
 }
 
+.admin-loyalty-customer-code {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(168, 85, 247, 0.85);
+  font-family: monospace;
+}
+
 .admin-loyalty-empty {
   text-align: center;
   padding: 24px 0;

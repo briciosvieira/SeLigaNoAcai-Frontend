@@ -3,9 +3,11 @@ import { Gift, Upload, Search, Plus, Minus, X, Check } from 'lucide-react';
 import { useAdminLoyalty } from '@/hooks/useAdminLoyalty';
 import { formatBRL } from '@/utils/currency.util';
 import { resolveImageUrl } from '@/utils/image-url.util';
+import type { AdminLoyaltyCustomerListItem, AdminLoyaltyCustomer } from '@/types/loyalty.types';
 import './AdminLoyaltyPage.css';
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
   try {
     return new Date(iso).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -13,8 +15,44 @@ function formatDate(iso: string): string {
       year: 'numeric',
     });
   } catch {
-    return iso;
+    return String(iso);
   }
+}
+
+function getEmail(c: AdminLoyaltyCustomerListItem | AdminLoyaltyCustomer): string | null {
+  return (c as AdminLoyaltyCustomerListItem).email ?? c.customerEmail ?? null;
+}
+
+function getPhone(c: AdminLoyaltyCustomerListItem | AdminLoyaltyCustomer): string | null {
+  return (c as AdminLoyaltyCustomerListItem).phone ?? c.customerPhone ?? null;
+}
+
+function CustomerAvatar({ name, avatarUrl, googleAvatarUrl, size = 36 }: {
+  name: string;
+  avatarUrl?: string | null;
+  googleAvatarUrl?: string | null;
+  size?: number;
+}) {
+  const src = resolveImageUrl(avatarUrl ?? googleAvatarUrl);
+  const initials = name.split(' ').slice(0, 2).map((w) => w[0] ?? '').join('').toUpperCase() || '?';
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+      />
+    );
+  }
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', background: 'linear-gradient(135deg,#7e22ce,#a855f7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff', fontWeight: 900, fontSize: size * 0.38, flexShrink: 0,
+    }}>
+      {initials}
+    </div>
+  );
 }
 
 export function AdminLoyaltyPage() {
@@ -304,7 +342,7 @@ export function AdminLoyaltyPage() {
                 <input
                   className="admin-loyalty-search-input"
                   type="text"
-                  placeholder="Nome, e-mail ou telefone…"
+                  placeholder="Nome, e-mail, telefone ou código…"
                   value={loy.searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                 />
@@ -320,24 +358,41 @@ export function AdminLoyaltyPage() {
 
               {loy.searchResults.length > 0 && (
                 <div className="admin-loyalty-customer-list">
-                  {loy.searchResults.map((c) => (
-                    <div
-                      key={c.customerId}
-                      className="admin-loyalty-customer-item"
-                      onClick={() => void loy.openCustomer(c.customerId)}
-                    >
-                      <div className="admin-loyalty-customer-info">
-                        <span className="admin-loyalty-customer-name">{c.customerName}</span>
-                        {c.customerEmail && (
-                          <span className="admin-loyalty-customer-email">{c.customerEmail}</span>
-                        )}
+                  {loy.searchResults.map((c) => {
+                    const email = getEmail(c);
+                    const phone = getPhone(c);
+                    return (
+                      <div
+                        key={c.customerId}
+                        className="admin-loyalty-customer-item"
+                        onClick={() => void loy.openCustomer(c.customerId)}
+                      >
+                        <CustomerAvatar
+                          name={c.customerName}
+                          avatarUrl={c.avatarUrl}
+                          googleAvatarUrl={c.googleAvatarUrl}
+                          size={36}
+                        />
+                        <div className="admin-loyalty-customer-info">
+                          <span className="admin-loyalty-customer-name">
+                            {c.customerName}
+                            {c.customerCode && (
+                              <span className="admin-loyalty-customer-code"> #{c.customerCode}</span>
+                            )}
+                          </span>
+                          {(email || phone) && (
+                            <span className="admin-loyalty-customer-email">
+                              {email ?? ''}{email && phone ? ' · ' : ''}{phone ?? ''}
+                            </span>
+                          )}
+                        </div>
+                        <span className="admin-loyalty-customer-stamps">
+                          {c.stamps} selo{c.stamps !== 1 ? 's' : ''}
+                          {c.availableRewards > 0 && ` · 🎁 ${c.availableRewards}`}
+                        </span>
                       </div>
-                      <span className="admin-loyalty-customer-stamps">
-                        {c.stamps} selo{c.stamps !== 1 ? 's' : ''}
-                        {c.availableRewards > 0 && ` · 🎁 ${c.availableRewards}`}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -347,7 +402,7 @@ export function AdminLoyaltyPage() {
 
               {!loy.searchQuery && (
                 <p className="admin-loyalty-empty">
-                  Digite para buscar um cliente pelo nome, e-mail ou telefone.
+                  Digite nome, e-mail, telefone ou código do cliente para buscar.
                 </p>
               )}
             </div>
@@ -363,16 +418,30 @@ export function AdminLoyaltyPage() {
               <div className="admin-loyalty-card">
                 {/* Detail header */}
                 <div className="admin-loyalty-detail-header">
-                  <div>
-                    <p className="admin-loyalty-detail-name">
-                      {loy.selectedCustomer.customerName}
-                    </p>
-                    <p className="admin-loyalty-detail-meta">
-                      {loy.selectedCustomer.customerEmail ?? '—'}
-                      {loy.selectedCustomer.customerPhone
-                        ? ` · ${loy.selectedCustomer.customerPhone}`
-                        : ''}
-                    </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <CustomerAvatar
+                      name={loy.selectedCustomer.customerName}
+                      avatarUrl={loy.selectedCustomer.avatarUrl}
+                      googleAvatarUrl={loy.selectedCustomer.googleAvatarUrl}
+                      size={44}
+                    />
+                    <div>
+                      <p className="admin-loyalty-detail-name">
+                        {loy.selectedCustomer.customerName}
+                        {loy.selectedCustomer.customerCode && (
+                          <span className="admin-loyalty-customer-code" style={{ marginLeft: 8 }}>
+                            #{loy.selectedCustomer.customerCode}
+                          </span>
+                        )}
+                      </p>
+                      <p className="admin-loyalty-detail-meta">
+                        {(() => {
+                          const em = getEmail(loy.selectedCustomer);
+                          const ph = getPhone(loy.selectedCustomer);
+                          return [em, ph].filter(Boolean).join(' · ') || '—';
+                        })()}
+                      </p>
+                    </div>
                   </div>
                   <button
                     className="admin-loyalty-detail-close"
@@ -386,23 +455,32 @@ export function AdminLoyaltyPage() {
                 {/* Stats */}
                 <div className="admin-loyalty-detail-stats">
                   <div className="admin-loyalty-stat-box">
-                    <span className="admin-loyalty-stat-label">Selos</span>
+                    <span className="admin-loyalty-stat-label">Selos (cartão atual)</span>
                     <span className="admin-loyalty-stat-value">
-                      {loy.selectedCustomer.stamps}
+                      {loy.selectedCustomer.currentCard?.stamps ?? loy.selectedCustomer.stamps}
+                      /{loy.selectedCustomer.currentCard?.stampsRequired ?? '—'}
                     </span>
                   </div>
                   <div className="admin-loyalty-stat-box">
-                    <span className="admin-loyalty-stat-label">Total</span>
+                    <span className="admin-loyalty-stat-label">Total conquistados</span>
                     <span className="admin-loyalty-stat-value">
                       {loy.selectedCustomer.totalEarnedStamps}
                     </span>
                   </div>
                   <div className="admin-loyalty-stat-box">
-                    <span className="admin-loyalty-stat-label">Brindes</span>
+                    <span className="admin-loyalty-stat-label">Brindes disponíveis</span>
                     <span className={`admin-loyalty-stat-value${loy.selectedCustomer.availableRewards > 0 ? ' highlight' : ''}`}>
                       {loy.selectedCustomer.availableRewards}
                     </span>
                   </div>
+                  {loy.selectedCustomer.currentCard?.status && (
+                    <div className="admin-loyalty-stat-box">
+                      <span className="admin-loyalty-stat-label">Status cartão</span>
+                      <span className="admin-loyalty-stat-value" style={{ fontSize: '0.8rem' }}>
+                        {loy.selectedCustomer.currentCard.status}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Redeem reward */}

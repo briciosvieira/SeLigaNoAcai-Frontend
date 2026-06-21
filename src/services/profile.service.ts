@@ -46,3 +46,12 @@ export async function upsertMyDefaultAddressRequest(
   const response = await api.put('/customers/me/address/default', payload);
   return unwrap<CustomerDefaultAddress>(response);
 }
+
+export async function uploadCustomerAvatarRequest(file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/uploads/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return unwrap<{ url: string }>(response);
+}
