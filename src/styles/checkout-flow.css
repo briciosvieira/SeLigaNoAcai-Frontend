@@ -13,12 +13,25 @@
 .checkout-modal {
   width: min(560px, calc(100vw - 32px));
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-radius: 24px;
   background: linear-gradient(180deg, #2b093a, #100515);
   border: 1px solid rgba(216, 180, 254, 0.18);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.56);
   color: #ffffff;
+}
+
+.checkout-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.checkout-modal-header,
+.checkout-modal-footer {
+  flex-shrink: 0;
 }
 
 .checkout-modal-header {
@@ -584,17 +597,33 @@
 
 @media (max-width: 640px) {
   .checkout-modal-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 76px 14px 88px;
   }
 
   .checkout-modal {
     width: 100%;
-    max-height: 94dvh;
-    border-radius: 24px 24px 0 0;
+    max-height: calc(100dvh - 164px);
+    border-radius: 22px;
+    /* Flex column: header e footer fixos, body com scroll interno */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .checkout-modal-header {
+    flex-shrink: 0;
+  }
+
+  .checkout-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .checkout-modal-footer {
+    flex-shrink: 0;
     flex-direction: column-reverse;
   }
 
@@ -619,13 +648,13 @@
   }
 
   .checkout-pix-qr-frame {
-    width: 200px;
-    height: 200px;
+    width: 220px;
+    height: 220px;
   }
 
   .checkout-pix-qr-image {
-    width: 184px;
-    height: 184px;
+    width: 204px;
+    height: 204px;
   }
 }
 
