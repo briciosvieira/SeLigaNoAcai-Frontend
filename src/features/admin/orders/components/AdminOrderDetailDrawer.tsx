@@ -250,6 +250,46 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
               <Section icon={<CreditCard size={15} />} title="Pagamento">
                 <InfoRow label="Método" value={PAYMENT_METHOD_LABEL[order.paymentMethod as string] ?? order.paymentMethod ?? '—'} />
                 <InfoRow label="Status" value={PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus} />
+                {(() => {
+                  const pmt = order.payment ?? order.payments?.[0] ?? null;
+                  if (!pmt) return null;
+                  const endToEndId = pmt.providerEndToEndId ?? pmt.endToEndId ?? null;
+                  return (
+                    <>
+                      {pmt.amountPaid != null && (
+                        <InfoRow label="Valor pago" value={formatBRL(Number(pmt.amountPaid))} />
+                      )}
+                      {pmt.paidAt && (
+                        <InfoRow label="Pago em" value={formatDateTime(pmt.paidAt)} />
+                      )}
+                      {pmt.payerName && (
+                        <InfoRow label="Pagador" value={pmt.payerName} />
+                      )}
+                      {(pmt.payerDocumentMasked || pmt.payerDocument) && (
+                        <InfoRow label="Documento" value={pmt.payerDocumentMasked ?? pmt.payerDocument ?? ''} />
+                      )}
+                      {pmt.payerBank && (
+                        <InfoRow label="Banco" value={pmt.payerBank} />
+                      )}
+                      {pmt.txid && (
+                        <div style={{ display: 'flex', gap: 8, fontSize: '0.875rem' }}>
+                          <span style={{ color: 'var(--t2)', minWidth: 70, flexShrink: 0 }}>TXID:</span>
+                          <span style={{ color: 'var(--txt)', fontWeight: 500, wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '0.78rem' }}>
+                            {pmt.txid}
+                          </span>
+                        </div>
+                      )}
+                      {endToEndId && (
+                        <div style={{ display: 'flex', gap: 8, fontSize: '0.875rem' }}>
+                          <span style={{ color: 'var(--t2)', minWidth: 70, flexShrink: 0 }}>E2E ID:</span>
+                          <span style={{ color: 'var(--txt)', fontWeight: 500, wordBreak: 'break-all', fontFamily: 'monospace', fontSize: '0.78rem' }}>
+                            {endToEndId}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </Section>
 
               {/* Totais */}

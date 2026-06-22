@@ -12,7 +12,7 @@ import {
 } from '@/utils/order.util';
 import { useCurrentStore } from '@/hooks/useCurrentStore';
 import { buildWhatsAppUrl } from '@/utils/whatsapp';
-import type { Order } from '@/types/order.types';
+import type { Order, PaymentDetails } from '@/types/order.types';
 
 interface Props {
   order: Order;
@@ -23,6 +23,126 @@ interface Props {
 function safeNum(val: unknown): number {
   const n = Number(val);
   return Number.isFinite(n) ? n : 0;
+}
+
+function getOrderPayment(order: Order): PaymentDetails | null {
+  if (order?.payment) return order.payment;
+  if (Array.isArray(order?.payments) && order.payments.length > 0) return order.payments[0];
+  return null;
+}
+
+function formatPaymentMethod(method?: string | null): string {
+  const m = String(method ?? '').toUpperCase();
+  if (m === 'PIX') return 'PIX';
+  if (m === 'CASH_ON_DELIVERY') return 'Dinheiro na entrega';
+  if (m === 'CARD_ON_DELIVERY') return 'Cartão na entrega';
+  return method || 'Não informado';
+}
+
+function formatPaymentStatus(status?: string | null): string {
+  const s = String(status ?? '').toUpperCase();
+  if (s === 'PAID') return 'Pago';
+  if (s === 'PENDING') return 'Pendente';
+  if (s === 'FAILED') return 'Falhou';
+  if (s === 'CANCELED') return 'Cancelado';
+  if (s === 'EXPIRED') return 'Expirado';
+  return status || 'Não informado';
+}
+
+function getPaymentStatusClass(status?: string | null): string {
+  const s = String(status ?? '').toUpperCase();
+  if (s === 'PAID') return 'is-paid';
+  if (s === 'PENDING') return 'is-pending';
+  if (s === 'FAILED') return 'is-failed';
+  if (s === 'CANCELED') return 'is-canceled';
+  if (s === 'EXPIRED') return 'is-expired';
+  return 'is-unknown';
+}
+
+function PaymentDetailsCard({ order }: { order: Order }) {
+  const payment = getOrderPayment(order);
+  const method = payment?.method ?? (typeof order.paymentMethod === 'string' ? order.paymentMethod : null);
+  const status = payment?.status ?? (typeof order.paymentStatus === 'string' ? order.paymentStatus : null);
+  const endToEndId = payment?.providerEndToEndId ?? payment?.endToEndId ?? null;
+  const amount = payment?.amount ?? order.totalAmount ?? order.total ?? null;
+
+  return (
+    <div className="order-payment-details-card">
+      <div className="order-payment-details-header">
+        <h3>Pagamento</h3>
+        <span className={`order-payment-status-badge ${getPaymentStatusClass(status)}`}>
+          {formatPaymentStatus(status)}
+        </span>
+      </div>
+
+      {!payment && !method ? (
+        <p className="order-payment-empty">Dados do pagamento não disponíveis.</p>
+      ) : (
+        <div className="order-payment-details-grid">
+          <div>
+            <span>Forma</span>
+            <strong>{formatPaymentMethod(method)}</strong>
+          </div>
+
+          {amount != null && (
+            <div>
+              <span>Valor do pedido</span>
+              <strong>{formatBRL(safeNum(amount))}</strong>
+            </div>
+          )}
+
+          {payment?.amountPaid != null && (
+            <div>
+              <span>Valor pago</span>
+              <strong>{formatBRL(safeNum(payment.amountPaid))}</strong>
+            </div>
+          )}
+
+          {payment?.paidAt && (
+            <div>
+              <span>Pago em</span>
+              <strong>{formatDateTime(payment.paidAt)}</strong>
+            </div>
+          )}
+
+          {payment?.payerName && (
+            <div>
+              <span>Pagador</span>
+              <strong>{payment.payerName}</strong>
+            </div>
+          )}
+
+          {(payment?.payerDocumentMasked || payment?.payerDocument) && (
+            <div>
+              <span>Documento</span>
+              <strong>{payment.payerDocumentMasked ?? payment.payerDocument}</strong>
+            </div>
+          )}
+
+          {payment?.payerBank && (
+            <div>
+              <span>Instituição</span>
+              <strong>{payment.payerBank}</strong>
+            </div>
+          )}
+
+          {payment?.txid && (
+            <div className="full">
+              <span>TXID</span>
+              <strong className="breakable">{payment.txid}</strong>
+            </div>
+          )}
+
+          {endToEndId && (
+            <div className="full">
+              <span>EndToEndId</span>
+              <strong className="breakable">{endToEndId}</strong>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function CustomerOrderDetailsModal({ order, onClose, onDetailLoaded }: Props) {
@@ -203,6 +323,9 @@ export function CustomerOrderDetailsModal({ order, onClose, onDetailLoaded }: Pr
               <span>{formatBRL(total)}</span>
             </div>
           </div>
+
+          {/* Detalhes do pagamento */}
+          <PaymentDetailsCard order={o} />
 
           {o.notes && (
             <div>

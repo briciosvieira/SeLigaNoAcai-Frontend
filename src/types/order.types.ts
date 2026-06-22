@@ -54,6 +54,24 @@ export type PixPaymentData = {
   amount?: string;
 };
 
+export type PaymentDetails = {
+  id?: string;
+  orderId?: string;
+  method?: string;
+  status?: string;
+  amount?: number | string | null;
+  amountPaid?: number | string | null;
+  txid?: string | null;
+  providerEndToEndId?: string | null;
+  endToEndId?: string | null;
+  payerName?: string | null;
+  payerDocument?: string | null;
+  payerDocumentMasked?: string | null;
+  payerBank?: string | null;
+  paidAt?: string | null;
+  expiresAt?: string | null;
+};
+
 /* ── Order item returned by GET /orders/my-orders/:id ── */
 export type OrderItem = {
   id?: string;
@@ -78,6 +96,8 @@ export type Order = {
   status?: OrderStatus;
   paymentMethod?: PaymentMethod | string | null;
   paymentStatus?: PaymentStatus | string | null;
+  payment?: PaymentDetails | null;
+  payments?: PaymentDetails[];
   items?: OrderItem[];
   itemsCount?: number | null;
   subtotalAmount?: number | string | null;
@@ -152,4 +172,6 @@ export type AdminOrderDetail = AdminOrderListItem & {
   deliveryFee?: number | string | null;
   subtotal?: number | string | null;
   notes?: string | null;
+  payment?: PaymentDetails | null;
+  payments?: PaymentDetails[];
 };
