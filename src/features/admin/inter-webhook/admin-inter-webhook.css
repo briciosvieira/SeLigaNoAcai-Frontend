@@ -144,6 +144,11 @@
   background: rgba(234, 179, 8, 0.13);
 }
 
+.admin-inter-webhook-badge.is-mismatch {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.13);
+}
+
 .admin-inter-webhook-actions {
   display: grid;
   gap: 10px;

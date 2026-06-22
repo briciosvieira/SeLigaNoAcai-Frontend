@@ -1,23 +1,24 @@
 import { api } from './api';
-import type { InterPixWebhookInfo } from '@/types/inter-webhook.types';
 
-function unwrapData(response: { data?: { data?: unknown } }): InterPixWebhookInfo {
-  return (response?.data as { data?: InterPixWebhookInfo })?.data
-    ?? (response?.data as InterPixWebhookInfo)
-    ?? {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function unwrapData(response: any): any {
+  return response?.data?.data ?? response?.data ?? response;
 }
 
-export async function getInterPixWebhookRequest(): Promise<InterPixWebhookInfo> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getInterPixWebhookRequest(): Promise<any> {
   const response = await api.get('/admin/inter/pix/webhook');
   return unwrapData(response);
 }
 
-export async function validateInterPixWebhookRequest(): Promise<InterPixWebhookInfo> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function validateInterPixWebhookRequest(): Promise<any> {
   const response = await api.post('/admin/inter/pix/webhook/validate');
   return unwrapData(response);
 }
 
-export async function registerInterPixWebhookRequest(): Promise<InterPixWebhookInfo> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function registerInterPixWebhookRequest(): Promise<any> {
   const response = await api.post('/admin/inter/pix/webhook/register');
   return unwrapData(response);
 }

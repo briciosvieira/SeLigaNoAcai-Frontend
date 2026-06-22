@@ -22,10 +22,34 @@ export function AdminInterWebhookPage() {
     void loadWebhook();
   }, [loadWebhook]);
 
-  const EXPECTED_WEBHOOK_URL = 'https://api.seliganoacai.com.br/payments/webhook/inter';
+  const expectedUrl =
+    (webhook?.expectedWebhookUrl as string | null | undefined) ??
+    'URL não informada pelo backend';
 
-  const webhookUrl = webhook?.webhookUrl ?? webhook?.url ?? null;
+  const registeredUrl =
+    (webhook?.registeredWebhookUrl as string | null | undefined) ??
+    (webhook?.webhookUrl as string | null | undefined) ??
+    (webhook?.url as string | null | undefined) ??
+    null;
+
+  const isRegistered =
+    Boolean(expectedUrl && registeredUrl) &&
+    expectedUrl !== 'URL não informada pelo backend' &&
+    expectedUrl === registeredUrl;
+
   const isAnythingLoading = loading || validating || registering;
+
+  function getStatusLabel(): string {
+    if (!registeredUrl) return 'Não cadastrado';
+    if (isRegistered) return 'Cadastrado corretamente';
+    return 'URL divergente';
+  }
+
+  function getStatusClass(): string {
+    if (!registeredUrl) return 'is-empty';
+    if (isRegistered) return 'is-ok';
+    return 'is-mismatch';
+  }
 
   return (
     <div className="admin-inter-webhook-page">
@@ -33,7 +57,7 @@ export function AdminInterWebhookPage() {
         <h1>Integração PIX Inter</h1>
         <p>
           Gerencie a URL de webhook usada pelo Banco Inter para confirmar pagamentos PIX
-          automaticamente. Use os botões abaixo para consultar, validar e registrar o webhook.
+          automaticamente. A URL esperada é definida pelo backend via variável de ambiente.
         </p>
       </div>
 
@@ -65,26 +89,30 @@ export function AdminInterWebhookPage() {
             <div className="admin-inter-webhook-status">
               <div className="admin-inter-webhook-row">
                 <span>URL pública esperada</span>
-                <strong className="breakable expected">{EXPECTED_WEBHOOK_URL}</strong>
+                {expectedUrl === 'URL não informada pelo backend' ? (
+                  <strong className="muted">{expectedUrl}</strong>
+                ) : (
+                  <strong className="breakable expected">{expectedUrl}</strong>
+                )}
               </div>
 
               <div className="admin-inter-webhook-row">
                 <span>URL cadastrada no Inter</span>
-                {webhookUrl ? (
-                  <strong className={`breakable${webhookUrl === EXPECTED_WEBHOOK_URL ? ' ok' : ' mismatch'}`}>
-                    {webhookUrl}
+                {registeredUrl ? (
+                  <strong className={`breakable${isRegistered ? ' ok' : ' mismatch'}`}>
+                    {registeredUrl}
                   </strong>
                 ) : (
                   <strong className="muted">
-                    {webhook ? 'Nenhum webhook cadastrado encontrado.' : 'Ainda não consultado.'}
+                    {webhook !== null ? 'Nenhum webhook cadastrado encontrado.' : 'Ainda não consultado.'}
                   </strong>
                 )}
               </div>
 
               <div className="admin-inter-webhook-row">
                 <span>Status</span>
-                <span className={`admin-inter-webhook-badge ${webhookUrl ? 'is-ok' : 'is-empty'}`}>
-                  {webhookUrl ? 'Cadastrado' : 'Não cadastrado'}
+                <span className={`admin-inter-webhook-badge ${getStatusClass()}`}>
+                  {getStatusLabel()}
                 </span>
               </div>
 
@@ -114,7 +142,7 @@ export function AdminInterWebhookPage() {
               ) : (
                 <RefreshCw size={15} />
               )}
-              Consultar webhook
+              {loading ? 'Consultando…' : 'Consultar webhook'}
             </button>
 
             <button
@@ -128,7 +156,7 @@ export function AdminInterWebhookPage() {
               ) : (
                 <Zap size={15} />
               )}
-              Validar URL no Inter
+              {validating ? 'Validando…' : 'Validar URL no Inter'}
             </button>
 
             <button
@@ -142,14 +170,13 @@ export function AdminInterWebhookPage() {
               ) : (
                 <Zap size={15} />
               )}
-              Registrar / Atualizar webhook
+              {registering ? 'Registrando…' : 'Registrar / Atualizar webhook'}
             </button>
 
             <p className="admin-inter-webhook-hint">
-              O backend registra automaticamente a URL{' '}
-              <strong>payments/webhook/inter</strong> no Inter. Use{' '}
+              A URL pública é configurada no backend via variável de ambiente. Use{' '}
               <strong>Registrar</strong> após configurar as credenciais e certificado do Inter no
-              ambiente.
+              servidor.
             </p>
           </div>
         </div>

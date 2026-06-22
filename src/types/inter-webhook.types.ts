@@ -1,7 +1,9 @@
 export type InterPixWebhookInfo = {
+  expectedWebhookUrl?: string | null;
+  registeredWebhookUrl?: string | null;
   webhookUrl?: string | null;
   url?: string | null;
   success?: boolean;
   message?: string;
-  raw?: unknown;
+  [key: string]: unknown;
 };
