@@ -6,12 +6,41 @@ import {
 } from '@/services/inter-webhook.service';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeInterWebhookResponse(data: any) {
+  const payload = data?.data ?? data ?? {};
+
+  return {
+    expectedWebhookUrl:
+      (payload.expectedWebhookUrl as string | null | undefined) ??
+      (payload.expectedUrl as string | null | undefined) ??
+      null,
+
+    registeredWebhookUrl:
+      (payload.registeredWebhookUrl as string | null | undefined) ??
+      (payload.webhookUrl as string | null | undefined) ??
+      (payload.url as string | null | undefined) ??
+      null,
+
+    webhookUrl:
+      (payload.webhookUrl as string | null | undefined) ??
+      (payload.registeredWebhookUrl as string | null | undefined) ??
+      (payload.url as string | null | undefined) ??
+      null,
+
+    isRegistered: Boolean(payload.isRegistered),
+    status: (payload.status as string | null | undefined) ?? null,
+    message: (payload.message as string | undefined) ?? null,
+    success: payload.success as boolean | undefined,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getFriendlyWebhookError(error: any): string {
   const status = error?.response?.status as number | undefined;
-  const message =
-    (error?.response?.data?.message as string | undefined) ??
-    (error?.response?.data?.error as string | undefined) ??
-    (error?.message as string | undefined);
+  const backendMessage: string | undefined =
+    error?.response?.data?.message ??
+    error?.response?.data?.error ??
+    error?.message;
 
   if (status === 401 || status === 403) {
     return 'Você não tem permissão para gerenciar o webhook do Inter.';
@@ -22,20 +51,21 @@ function getFriendlyWebhookError(error: any): string {
   }
 
   if (status === 500) {
-    return message ?? 'Erro interno no backend. Verifique credenciais, certificados e logs do Inter.';
+    return backendMessage ?? 'Erro interno no backend. Verifique credenciais, certificados, escopos da API Pix e logs do backend.';
   }
 
   if (!status) {
     return 'Não foi possível conectar ao backend.';
   }
 
-  return message ?? 'Não foi possível executar a operação.';
+  return backendMessage ?? 'Não foi possível executar a operação.';
 }
 
+export type NormalizedWebhook = ReturnType<typeof normalizeInterWebhookResponse>;
+
 export function useAdminInterWebhook() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [webhook, setWebhook] = useState<any>(null);
-  const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [webhook, setWebhook] = useState<NormalizedWebhook | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [registering, setRegistering] = useState(false);
@@ -51,9 +81,9 @@ export function useAdminInterWebhook() {
     setLoading(true);
     clearMessages();
     try {
-      const data = await getInterPixWebhookRequest();
-      setWebhook(data ?? null);
-      setLastChecked(new Date());
+      const raw = await getInterPixWebhookRequest();
+      setWebhook(normalizeInterWebhookResponse(raw));
+      setHasLoaded(true);
     } catch (err) {
       setError(getFriendlyWebhookError(err));
     } finally {
@@ -65,8 +95,9 @@ export function useAdminInterWebhook() {
     setValidating(true);
     clearMessages();
     try {
-      const data = await validateInterPixWebhookRequest();
-      setSuccessMessage((data?.message as string | undefined) ?? 'URL validada com sucesso no Inter.');
+      const raw = await validateInterPixWebhookRequest();
+      const normalized = normalizeInterWebhookResponse(raw);
+      setSuccessMessage(normalized.message ?? 'URL validada com sucesso no Inter.');
     } catch (err) {
       setError(getFriendlyWebhookError(err));
     } finally {
@@ -78,11 +109,13 @@ export function useAdminInterWebhook() {
     setRegistering(true);
     clearMessages();
     try {
-      const data = await registerInterPixWebhookRequest();
-      setSuccessMessage((data?.message as string | undefined) ?? 'Webhook cadastrado/atualizado com sucesso no Inter.');
-      const updated = await getInterPixWebhookRequest();
-      setWebhook(updated ?? null);
-      setLastChecked(new Date());
+      const raw = await registerInterPixWebhookRequest();
+      const normalized = normalizeInterWebhookResponse(raw);
+      setSuccessMessage(normalized.message ?? 'Webhook cadastrado/atualizado com sucesso no Inter.');
+      // Reload to get the latest registered URL from backend
+      const updatedRaw = await getInterPixWebhookRequest();
+      setWebhook(normalizeInterWebhookResponse(updatedRaw));
+      setHasLoaded(true);
     } catch (err) {
       setError(getFriendlyWebhookError(err));
     } finally {
@@ -92,7 +125,7 @@ export function useAdminInterWebhook() {
 
   return {
     webhook,
-    lastChecked,
+    hasLoaded,
     loading,
     validating,
     registering,

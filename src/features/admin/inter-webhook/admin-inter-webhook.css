@@ -149,6 +149,16 @@
   background: rgba(239, 68, 68, 0.13);
 }
 
+.admin-inter-webhook-badge.is-error {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.13);
+}
+
+.admin-inter-webhook-badge.is-pending {
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .admin-inter-webhook-actions {
   display: grid;
   gap: 10px;

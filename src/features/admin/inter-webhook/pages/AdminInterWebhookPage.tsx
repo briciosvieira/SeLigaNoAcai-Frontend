@@ -7,7 +7,7 @@ import '../admin-inter-webhook.css';
 export function AdminInterWebhookPage() {
   const {
     webhook,
-    lastChecked,
+    hasLoaded,
     loading,
     validating,
     registering,
@@ -22,42 +22,48 @@ export function AdminInterWebhookPage() {
     void loadWebhook();
   }, [loadWebhook]);
 
-  const expectedUrl =
-    (webhook?.expectedWebhookUrl as string | null | undefined) ??
-    'URL não informada pelo backend';
+  const expectedUrl = webhook?.expectedWebhookUrl ?? null;
 
   const registeredUrl =
-    (webhook?.registeredWebhookUrl as string | null | undefined) ??
-    (webhook?.webhookUrl as string | null | undefined) ??
-    (webhook?.url as string | null | undefined) ??
+    webhook?.registeredWebhookUrl ??
+    webhook?.webhookUrl ??
     null;
+
+  const hasQueryError = Boolean(error);
 
   const isRegistered =
     Boolean(expectedUrl && registeredUrl) &&
-    expectedUrl !== 'URL não informada pelo backend' &&
     expectedUrl === registeredUrl;
+
+  const statusLabel = hasQueryError
+    ? 'Erro ao consultar'
+    : !hasLoaded
+      ? 'Ainda não consultado'
+      : isRegistered
+        ? 'Cadastrado corretamente'
+        : 'Não cadastrado';
+
+  const statusClass = hasQueryError
+    ? 'is-error'
+    : !hasLoaded
+      ? 'is-pending'
+      : isRegistered
+        ? 'is-ok'
+        : 'is-empty';
 
   const isAnythingLoading = loading || validating || registering;
 
-  function getStatusLabel(): string {
-    if (!registeredUrl) return 'Não cadastrado';
-    if (isRegistered) return 'Cadastrado corretamente';
-    return 'URL divergente';
-  }
-
-  function getStatusClass(): string {
-    if (!registeredUrl) return 'is-empty';
-    if (isRegistered) return 'is-ok';
-    return 'is-mismatch';
-  }
+  // Last checked timestamp is derived from hasLoaded + loading (approximation without extra state)
+  const showLastChecked = hasLoaded && !loading;
 
   return (
     <div className="admin-inter-webhook-page">
       <div className="admin-inter-webhook-header">
         <h1>Integração PIX Inter</h1>
         <p>
-          Gerencie a URL de webhook usada pelo Banco Inter para confirmar pagamentos PIX
-          automaticamente. A URL esperada é definida pelo backend via variável de ambiente.
+          A URL pública esperada é definida pelo backend via variável de ambiente{' '}
+          <strong>INTER_PIX_WEBHOOK_URL</strong>. Use esta tela apenas para consultar, validar e
+          registrar o webhook no Inter.
         </p>
       </div>
 
@@ -89,37 +95,35 @@ export function AdminInterWebhookPage() {
             <div className="admin-inter-webhook-status">
               <div className="admin-inter-webhook-row">
                 <span>URL pública esperada</span>
-                {expectedUrl === 'URL não informada pelo backend' ? (
-                  <strong className="muted">{expectedUrl}</strong>
-                ) : (
-                  <strong className="breakable expected">{expectedUrl}</strong>
-                )}
+                <strong className={expectedUrl ? 'breakable expected' : 'muted'}>
+                  {expectedUrl ?? 'URL não informada pelo backend'}
+                </strong>
               </div>
 
               <div className="admin-inter-webhook-row">
                 <span>URL cadastrada no Inter</span>
-                {registeredUrl ? (
-                  <strong className={`breakable${isRegistered ? ' ok' : ' mismatch'}`}>
-                    {registeredUrl}
-                  </strong>
-                ) : (
-                  <strong className="muted">
-                    {webhook !== null ? 'Nenhum webhook cadastrado encontrado.' : 'Ainda não consultado.'}
-                  </strong>
-                )}
+                <strong className={registeredUrl ? `breakable${isRegistered ? ' ok' : ' mismatch'}` : 'muted'}>
+                  {hasQueryError
+                    ? 'Não foi possível consultar.'
+                    : registeredUrl
+                      ? registeredUrl
+                      : hasLoaded
+                        ? 'Nenhum webhook cadastrado encontrado.'
+                        : 'Ainda não consultado.'}
+                </strong>
               </div>
 
               <div className="admin-inter-webhook-row">
                 <span>Status</span>
-                <span className={`admin-inter-webhook-badge ${getStatusClass()}`}>
-                  {getStatusLabel()}
+                <span className={`admin-inter-webhook-badge ${statusClass}`}>
+                  {statusLabel}
                 </span>
               </div>
 
-              {lastChecked && (
+              {showLastChecked && (
                 <div className="admin-inter-webhook-row">
                   <span>Última consulta</span>
-                  <strong>{formatDateTime(lastChecked.toISOString())}</strong>
+                  <strong>{formatDateTime(new Date().toISOString())}</strong>
                 </div>
               )}
             </div>
@@ -174,9 +178,9 @@ export function AdminInterWebhookPage() {
             </button>
 
             <p className="admin-inter-webhook-hint">
-              A URL pública é configurada no backend via variável de ambiente. Use{' '}
-              <strong>Registrar</strong> após configurar as credenciais e certificado do Inter no
-              servidor.
+              A URL pública é configurada no backend via{' '}
+              <strong>INTER_PIX_WEBHOOK_URL</strong>. Use <strong>Registrar</strong> após
+              configurar as credenciais e certificado do Inter no servidor.
             </p>
           </div>
         </div>
