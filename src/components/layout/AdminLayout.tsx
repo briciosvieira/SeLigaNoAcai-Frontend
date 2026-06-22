@@ -15,6 +15,7 @@ import {
   Megaphone,
   LogOut,
   ArrowLeft,
+  Zap,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { Toast } from '@/components/ui/Toast';
@@ -29,6 +30,7 @@ export function AdminLayout() {
   const canManageProducts = isAdmin || user?.permissions?.includes('MANAGE_PRODUCTS');
   const canManageStore = isAdmin || user?.permissions?.includes('MANAGE_STORE');
   const canManageZones = isAdmin || user?.permissions?.includes('MANAGE_DELIVERY_ZONES');
+  const canManagePayments = isAdmin || user?.permissions?.includes('MANAGE_PAYMENTS');
 
   const navItems = [
     { to: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, end: true },
@@ -44,6 +46,7 @@ export function AdminLayout() {
     ...(canManageZones ? [{ to: '/admin/delivery-zones', label: 'Zonas de entrega', icon: <MapPin size={18} />, end: false }] : []),
     ...(canManageProducts ? [{ to: '/admin/loyalty', label: 'Fidelidade', icon: <Gift size={18} />, end: false }] : []),
     { to: '/admin/customers', label: 'Clientes', icon: <Users size={18} /> },
+    ...(canManagePayments ? [{ to: '/admin/inter-webhook', label: 'PIX Inter', icon: <Zap size={18} />, end: false }] : []),
     ...(isAdmin ? [{ to: '/admin/users', label: 'Usuários', icon: <UserCog size={18} />, end: false }] : []),
   ];
 

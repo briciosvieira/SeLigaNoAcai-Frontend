@@ -27,6 +27,7 @@ import { AdminDeliveryZonesPage } from '@/features/admin/delivery-zones/pages/Ad
 import { AdminPromotionsPage } from '@/features/admin/promotions/pages/AdminPromotionsPage';
 import { AdminLoyaltyPage } from '@/features/admin/loyalty/pages/AdminLoyaltyPage';
 import { AdminAnnouncementsPage } from '@/features/admin/announcements/pages/AdminAnnouncementsPage';
+import { AdminInterWebhookPage } from '@/features/admin/inter-webhook/pages/AdminInterWebhookPage';
 
 export const router = createBrowserRouter([
   {
@@ -85,6 +86,7 @@ export const router = createBrowserRouter([
                 element: <ProtectedRoute allowedRoles={['ADMIN']} />,
                 children: [
                   { path: '/admin/users', element: <AdminUsersPage /> },
+                  { path: '/admin/inter-webhook', element: <AdminInterWebhookPage /> },
                 ],
               },
             ],
