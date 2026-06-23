@@ -76,6 +76,21 @@ function buildWhatsAppUrl(phone: string): string {
   return `https://wa.me/${withCode}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getNeighborhood(order: any): string | null {
+  return (
+    order?.deliveryZone?.neighborhood ??
+    order?.deliveryZone?.name ??
+    order?.neighborhood ??
+    order?.deliveryNeighborhood ??
+    order?.address?.neighborhood ??
+    order?.customerAddress?.neighborhood ??
+    order?.customer?.neighborhood ??
+    order?.customer?.address?.neighborhood ??
+    null
+  );
+}
+
 type Props = {
   order: AdminOrderDetail | null;
   isLoading: boolean;
@@ -113,12 +128,14 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
   const customerName = order?.customerName ?? order?.customer?.fullName ?? 'Cliente não informado';
   const customerPhone = order?.customerPhone ?? order?.customer?.phone ?? null;
   const customerEmail = order?.customer?.email ?? null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const neighborhood = getNeighborhood(order as any);
   const orderStatusColors = order ? (ORDER_STATUS_COLOR[order.orderStatus] ?? ORDER_STATUS_COLOR.CREATED) : ORDER_STATUS_COLOR.CREATED;
   const paymentStatusColors = order ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR.PENDING) : PAYMENT_STATUS_COLOR.PENDING;
   const statusActions = order ? getStatusActions(order.orderStatus) : [];
 
   const hasDeliveryInfo = order && (
-    order.neighborhood ||
+    neighborhood ||
     order.street ||
     order.addressNumber ||
     order.complement ||
@@ -210,6 +227,7 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
                 {customerPhone && (
                   <PhoneRow phone={customerPhone} label="Telefone" />
                 )}
+                {neighborhood && <InfoRow label="Bairro" value={neighborhood} />}
                 {customerEmail && <InfoRow label="E-mail" value={customerEmail} />}
                 {order.customer?.cpf && <InfoRow label="CPF" value={order.customer.cpf} />}
               </Section>
@@ -327,12 +345,8 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
               {/* Dados de entrega — exibido após o valor */}
               {hasDeliveryInfo && (
                 <Section icon={<MapPin size={15} />} title="Dados de entrega">
-                  <WideInfoRow label="Nome completo" value={customerName} />
-                  {customerPhone && (
-                    <PhoneRow phone={customerPhone} label="Telefone" wide />
-                  )}
-                  {order.neighborhood && (
-                    <WideInfoRow label="Bairro" value={order.neighborhood} />
+                  {neighborhood && (
+                    <WideInfoRow label="Bairro" value={neighborhood} />
                   )}
                   {order.deliveryFee != null && (
                     <WideInfoRow label="Taxa de entrega" value={formatBRL(deliveryFee)} />
