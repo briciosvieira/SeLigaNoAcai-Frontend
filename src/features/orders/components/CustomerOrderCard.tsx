@@ -14,11 +14,9 @@ import type { Order } from '@/types/order.types';
 interface Props {
   order: Order;
   onViewDetails: () => void;
-  onSyncPix?: (orderId: string) => void;
-  isSyncing?: boolean;
 }
 
-export function CustomerOrderCard({ order, onViewDetails, onSyncPix, isSyncing }: Props) {
+export function CustomerOrderCard({ order, onViewDetails }: Props) {
   const orderAny = order as Record<string, unknown>;
 
   const total = getOrderTotal(order);
@@ -101,16 +99,6 @@ export function CustomerOrderCard({ order, onViewDetails, onSyncPix, isSyncing }
       )}
 
       <div className="customer-order-card-actions">
-        {onSyncPix && (
-          <button
-            type="button"
-            className="order-pix-sync-button"
-            onClick={() => onSyncPix(order.id)}
-            disabled={isSyncing}
-          >
-            {isSyncing ? 'Verificando...' : 'Verificar pagamento'}
-          </button>
-        )}
         <button
           type="button"
           className="customer-order-details-button"
