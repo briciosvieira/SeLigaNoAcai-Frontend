@@ -5,8 +5,20 @@ import {
   registerInterPixWebhookRequest,
 } from '@/services/inter-webhook.service';
 
+// Shape documentada do GET /admin/inter/pix/webhook
+export type NormalizedWebhook = {
+  expectedWebhookUrl: string | null;
+  registeredWebhookUrl: string | null;
+  webhookUrl: string | null;
+  isRegistered: boolean;
+  status: string | null;
+  message: string | null;
+  success: boolean | undefined;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeInterWebhookResponse(data: any) {
+function normalizeInterWebhookResponse(data: any): NormalizedWebhook {
+  // Suporta { data: { ... } } e { ... } direto
   const payload = data?.data ?? data ?? {};
 
   return {
@@ -27,8 +39,12 @@ function normalizeInterWebhookResponse(data: any) {
       (payload.url as string | null | undefined) ??
       null,
 
+    // Backend retorna booleano — usar diretamente como fonte da verdade
     isRegistered: Boolean(payload.isRegistered),
+
+    // NOT_REGISTERED | REGISTERED | CONFIG_ERROR | INTER_FORBIDDEN | ERROR
     status: (payload.status as string | null | undefined) ?? null,
+
     message: (payload.message as string | undefined) ?? null,
     success: payload.success as boolean | undefined,
   };
@@ -61,11 +77,10 @@ function getFriendlyWebhookError(error: any): string {
   return backendMessage ?? 'Não foi possível executar a operação.';
 }
 
-export type NormalizedWebhook = ReturnType<typeof normalizeInterWebhookResponse>;
-
 export function useAdminInterWebhook() {
   const [webhook, setWebhook] = useState<NormalizedWebhook | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [registering, setRegistering] = useState(false);
@@ -84,6 +99,7 @@ export function useAdminInterWebhook() {
       const raw = await getInterPixWebhookRequest();
       setWebhook(normalizeInterWebhookResponse(raw));
       setHasLoaded(true);
+      setLastChecked(new Date());
     } catch (err) {
       setError(getFriendlyWebhookError(err));
     } finally {
@@ -112,10 +128,11 @@ export function useAdminInterWebhook() {
       const raw = await registerInterPixWebhookRequest();
       const normalized = normalizeInterWebhookResponse(raw);
       setSuccessMessage(normalized.message ?? 'Webhook cadastrado/atualizado com sucesso no Inter.');
-      // Reload to get the latest registered URL from backend
+      // Recarrega para refletir o estado real após o registro
       const updatedRaw = await getInterPixWebhookRequest();
       setWebhook(normalizeInterWebhookResponse(updatedRaw));
       setHasLoaded(true);
+      setLastChecked(new Date());
     } catch (err) {
       setError(getFriendlyWebhookError(err));
     } finally {
@@ -126,6 +143,7 @@ export function useAdminInterWebhook() {
   return {
     webhook,
     hasLoaded,
+    lastChecked,
     loading,
     validating,
     registering,

@@ -4,10 +4,36 @@ import { useAdminInterWebhook } from '@/hooks/useAdminInterWebhook';
 import { formatDateTime } from '@/utils/date.util';
 import '../admin-inter-webhook.css';
 
+type StatusInfo = { label: string; cssClass: string };
+
+function resolveStatus(
+  backendStatus: string | null | undefined,
+  isRegistered: boolean,
+  hasQueryError: boolean,
+  hasLoaded: boolean,
+): StatusInfo {
+  if (hasQueryError) return { label: 'Erro ao consultar', cssClass: 'is-error' };
+  if (!hasLoaded)    return { label: 'Ainda não consultado', cssClass: 'is-pending' };
+
+  switch (backendStatus) {
+    case 'REGISTERED':      return { label: 'Cadastrado corretamente', cssClass: 'is-ok' };
+    case 'NOT_REGISTERED':  return { label: 'Não cadastrado', cssClass: 'is-empty' };
+    case 'CONFIG_ERROR':    return { label: 'Erro de configuração', cssClass: 'is-error' };
+    case 'INTER_FORBIDDEN': return { label: 'Sem permissão no Inter', cssClass: 'is-error' };
+    case 'ERROR':           return { label: 'Erro ao consultar Inter', cssClass: 'is-error' };
+    default:
+      // Backend não retornou status — usar o booleano isRegistered
+      return isRegistered
+        ? { label: 'Cadastrado corretamente', cssClass: 'is-ok' }
+        : { label: 'Não cadastrado', cssClass: 'is-empty' };
+  }
+}
+
 export function AdminInterWebhookPage() {
   const {
     webhook,
     hasLoaded,
+    lastChecked,
     loading,
     validating,
     registering,
@@ -22,39 +48,28 @@ export function AdminInterWebhookPage() {
     void loadWebhook();
   }, [loadWebhook]);
 
-  const expectedUrl = webhook?.expectedWebhookUrl ?? null;
+  // Fonte da verdade: backend retorna expectedWebhookUrl via INTER_PIX_WEBHOOK_URL
+  const expectedUrl = webhook?.expectedWebhookUrl ?? 'Não configurado';
 
+  // URL que está efetivamente cadastrada no Inter
   const registeredUrl =
     webhook?.registeredWebhookUrl ??
     webhook?.webhookUrl ??
     null;
 
+  // Backend retorna booleano isRegistered — usar diretamente
+  const isRegistered = webhook?.isRegistered === true;
+
   const hasQueryError = Boolean(error);
 
-  const isRegistered =
-    Boolean(expectedUrl && registeredUrl) &&
-    expectedUrl === registeredUrl;
-
-  const statusLabel = hasQueryError
-    ? 'Erro ao consultar'
-    : !hasLoaded
-      ? 'Ainda não consultado'
-      : isRegistered
-        ? 'Cadastrado corretamente'
-        : 'Não cadastrado';
-
-  const statusClass = hasQueryError
-    ? 'is-error'
-    : !hasLoaded
-      ? 'is-pending'
-      : isRegistered
-        ? 'is-ok'
-        : 'is-empty';
+  const { label: statusLabel, cssClass: statusClass } = resolveStatus(
+    webhook?.status,
+    isRegistered,
+    hasQueryError,
+    hasLoaded,
+  );
 
   const isAnythingLoading = loading || validating || registering;
-
-  // Last checked timestamp is derived from hasLoaded + loading (approximation without extra state)
-  const showLastChecked = hasLoaded && !loading;
 
   return (
     <div className="admin-inter-webhook-page">
@@ -95,14 +110,20 @@ export function AdminInterWebhookPage() {
             <div className="admin-inter-webhook-status">
               <div className="admin-inter-webhook-row">
                 <span>URL pública esperada</span>
-                <strong className={expectedUrl ? 'breakable expected' : 'muted'}>
-                  {expectedUrl ?? 'URL não informada pelo backend'}
+                <strong className={expectedUrl === 'Não configurado' ? 'muted' : 'breakable expected'}>
+                  {expectedUrl}
                 </strong>
               </div>
 
               <div className="admin-inter-webhook-row">
                 <span>URL cadastrada no Inter</span>
-                <strong className={registeredUrl ? `breakable${isRegistered ? ' ok' : ' mismatch'}` : 'muted'}>
+                <strong
+                  className={
+                    registeredUrl
+                      ? `breakable${isRegistered ? ' ok' : ' mismatch'}`
+                      : 'muted'
+                  }
+                >
                   {hasQueryError
                     ? 'Não foi possível consultar.'
                     : registeredUrl
@@ -120,10 +141,10 @@ export function AdminInterWebhookPage() {
                 </span>
               </div>
 
-              {showLastChecked && (
+              {lastChecked && (
                 <div className="admin-inter-webhook-row">
                   <span>Última consulta</span>
-                  <strong>{formatDateTime(new Date().toISOString())}</strong>
+                  <strong>{formatDateTime(lastChecked.toISOString())}</strong>
                 </div>
               )}
             </div>
