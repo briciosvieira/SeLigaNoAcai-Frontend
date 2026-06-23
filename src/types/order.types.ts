@@ -195,6 +195,11 @@ export type AdminOrderDetail = AdminOrderListItem & {
   deliveryFee?: number | string | null;
   subtotal?: number | string | null;
   notes?: string | null;
+  street?: string | null;
+  addressNumber?: string | null;
+  complement?: string | null;
+  apartment?: string | null;
+  referencePoint?: string | null;
   payment?: PaymentDetails | null;
   payments?: PaymentDetails[];
 };

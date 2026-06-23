@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, MapPin, ShoppingBag, CreditCard, RefreshCw } from 'lucide-react';
+import { X, User, MapPin, ShoppingBag, CreditCard, RefreshCw, Phone } from 'lucide-react';
 import { formatBRL, getOrderTotal } from '@/utils/currency.util';
 import { formatDateTime } from '@/utils/date.util';
 import type { AdminOrderDetail, OrderStatus, PaymentStatus } from '@/types/order.types';
@@ -70,6 +70,12 @@ function getStatusActions(status: OrderStatus): StatusAction[] {
   return [];
 }
 
+function buildWhatsAppUrl(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const withCode = digits.startsWith('55') ? digits : `55${digits}`;
+  return `https://wa.me/${withCode}`;
+}
+
 type Props = {
   order: AdminOrderDetail | null;
   isLoading: boolean;
@@ -110,6 +116,16 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
   const orderStatusColors = order ? (ORDER_STATUS_COLOR[order.orderStatus] ?? ORDER_STATUS_COLOR.CREATED) : ORDER_STATUS_COLOR.CREATED;
   const paymentStatusColors = order ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR.PENDING) : PAYMENT_STATUS_COLOR.PENDING;
   const statusActions = order ? getStatusActions(order.orderStatus) : [];
+
+  const hasDeliveryInfo = order && (
+    order.neighborhood ||
+    order.street ||
+    order.addressNumber ||
+    order.complement ||
+    order.apartment ||
+    order.referencePoint ||
+    order.deliveryAddress
+  );
 
   return (
     <>
@@ -191,18 +207,12 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
               {/* Cliente */}
               <Section icon={<User size={15} />} title="Cliente">
                 <InfoRow label="Nome" value={customerName} />
-                {customerPhone && <InfoRow label="Telefone" value={customerPhone} />}
+                {customerPhone && (
+                  <PhoneRow phone={customerPhone} label="Telefone" />
+                )}
                 {customerEmail && <InfoRow label="E-mail" value={customerEmail} />}
                 {order.customer?.cpf && <InfoRow label="CPF" value={order.customer.cpf} />}
               </Section>
-
-              {/* Endereço */}
-              {(order.deliveryAddress || order.neighborhood) && (
-                <Section icon={<MapPin size={15} />} title="Endereço de entrega">
-                  {order.deliveryAddress && <InfoRow label="Endereço" value={order.deliveryAddress} />}
-                  {order.neighborhood && <InfoRow label="Bairro" value={order.neighborhood} />}
-                </Section>
-              )}
 
               {/* Itens */}
               <Section icon={<ShoppingBag size={15} />} title={`Itens${order.items?.length ? ` (${order.items.length})` : ''}`}>
@@ -314,6 +324,41 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
                 </div>
               </div>
 
+              {/* Dados de entrega — exibido após o valor */}
+              {hasDeliveryInfo && (
+                <Section icon={<MapPin size={15} />} title="Dados de entrega">
+                  <WideInfoRow label="Nome completo" value={customerName} />
+                  {customerPhone && (
+                    <PhoneRow phone={customerPhone} label="Telefone" wide />
+                  )}
+                  {order.neighborhood && (
+                    <WideInfoRow label="Bairro" value={order.neighborhood} />
+                  )}
+                  {order.deliveryFee != null && (
+                    <WideInfoRow label="Taxa de entrega" value={formatBRL(deliveryFee)} />
+                  )}
+                  {order.street && (
+                    <WideInfoRow label="Rua / Avenida" value={order.street} />
+                  )}
+                  {order.addressNumber && (
+                    <WideInfoRow label="Número" value={order.addressNumber} />
+                  )}
+                  {order.complement && (
+                    <WideInfoRow label="Complemento" value={order.complement} />
+                  )}
+                  {order.apartment && (
+                    <WideInfoRow label="Apto / Bloco" value={order.apartment} />
+                  )}
+                  {order.referencePoint && (
+                    <WideInfoRow label="Ponto de referência" value={order.referencePoint} />
+                  )}
+                  {/* Fallback: endereço completo em string quando campos individuais não existem */}
+                  {order.deliveryAddress && !order.street && (
+                    <WideInfoRow label="Endereço" value={order.deliveryAddress} />
+                  )}
+                </Section>
+              )}
+
               {/* Observações */}
               {order.notes && (
                 <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--r-md)', padding: '10px 14px' }}>
@@ -399,6 +444,40 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div style={{ display: 'flex', gap: 8, fontSize: '0.875rem' }}>
       <span style={{ color: 'var(--t2)', minWidth: 70, flexShrink: 0 }}>{label}:</span>
       <span style={{ color: 'var(--txt)', fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+function WideInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, fontSize: '0.875rem' }}>
+      <span style={{ color: 'var(--t2)', minWidth: 130, flexShrink: 0 }}>{label}:</span>
+      <span style={{ color: 'var(--txt)', fontWeight: 500 }}>{value}</span>
+    </div>
+  );
+}
+
+function PhoneRow({ phone, label, wide }: { phone: string; label: string; wide?: boolean }) {
+  const whatsappUrl = buildWhatsAppUrl(phone);
+  return (
+    <div style={{ display: 'flex', gap: 8, fontSize: '0.875rem', alignItems: 'center' }}>
+      <span style={{ color: 'var(--t2)', minWidth: wide ? 130 : 70, flexShrink: 0 }}>{label}:</span>
+      <a
+        href={whatsappUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: '#25d366',
+          fontWeight: 700,
+          textDecoration: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+        }}
+      >
+        <Phone size={13} />
+        {phone}
+      </a>
     </div>
   );
 }
