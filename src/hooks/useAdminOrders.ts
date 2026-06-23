@@ -7,6 +7,21 @@ import {
 } from '@/services/orders.service';
 import type { AdminOrderListItem, AdminOrderDetail, OrderStatus, PaymentStatus } from '@/types/order.types';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeOrderDetail(raw: any): AdminOrderDetail {
+  const addr = raw?.address ?? raw?.deliveryAddress_obj ?? null;
+  return {
+    ...raw,
+    neighborhood: raw.neighborhood ?? raw.deliveryZoneName ?? raw.zone?.name ?? null,
+    deliveryAddress: raw.deliveryAddress ?? raw.address_full ?? null,
+    street: raw.street ?? addr?.street ?? null,
+    addressNumber: raw.addressNumber ?? raw.number ?? addr?.number ?? null,
+    complement: raw.complement ?? addr?.complement ?? null,
+    apartment: raw.apartment ?? addr?.apartment ?? null,
+    referencePoint: raw.referencePoint ?? addr?.referencePoint ?? null,
+  };
+}
+
 export function useAdminOrders() {
   const [orders, setOrders] = useState<AdminOrderListItem[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderDetail | null>(null);
@@ -28,8 +43,8 @@ export function useAdminOrders() {
   async function openOrderDetail(id: string) {
     setIsDetailLoading(true);
     try {
-      const data = await getAdminOrderByIdRequest(id);
-      setSelectedOrder(data);
+      const raw = await getAdminOrderByIdRequest(id);
+      setSelectedOrder(normalizeOrderDetail(raw));
     } catch {
       setSelectedOrder(null);
     } finally {
@@ -45,8 +60,8 @@ export function useAdminOrders() {
     if (!selectedOrder) return;
     setIsDetailLoading(true);
     try {
-      const data = await getAdminOrderByIdRequest(selectedOrder.id);
-      setSelectedOrder(data);
+      const raw = await getAdminOrderByIdRequest(selectedOrder.id);
+      setSelectedOrder(normalizeOrderDetail(raw));
     } catch {
       // mantém o estado atual
     } finally {
