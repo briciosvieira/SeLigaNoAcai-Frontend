@@ -18,6 +18,8 @@ interface Props {
   order: Order;
   onClose: () => void;
   onDetailLoaded?: (order: Order) => void;
+  onSyncPix?: (orderId: string) => void;
+  syncingOrderId?: string | null;
 }
 
 function safeNum(val: unknown): number {
@@ -145,7 +147,22 @@ function PaymentDetailsCard({ order }: { order: Order }) {
   );
 }
 
-export function CustomerOrderDetailsModal({ order, onClose, onDetailLoaded }: Props) {
+function isPendingPixInModal(o: Order): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const payments: any[] = Array.isArray((o as any).payments)
+    ? (o as any).payments
+    : (o as any).payment
+      ? [(o as any).payment]
+      : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pixPayment = payments.find((p: any) =>
+    String(p?.paymentMethod ?? p?.method ?? o?.paymentMethod ?? '').toUpperCase() === 'PIX',
+  );
+  const status = String(pixPayment?.status ?? o?.paymentStatus ?? '').toUpperCase();
+  return Boolean(pixPayment) && status === 'PENDING';
+}
+
+export function CustomerOrderDetailsModal({ order, onClose, onDetailLoaded, onSyncPix, syncingOrderId }: Props) {
   const [detail, setDetail] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const store = useCurrentStore();
@@ -353,6 +370,17 @@ export function CustomerOrderDetailsModal({ order, onClose, onDetailLoaded }: Pr
         )}
 
         <div className="order-details-footer">
+          {onSyncPix && isPendingPixInModal(o) && (
+            <button
+              type="button"
+              className="order-pix-sync-button"
+              onClick={() => onSyncPix(o.id)}
+              disabled={syncingOrderId === o.id}
+              style={{ flex: 1 }}
+            >
+              {syncingOrderId === o.id ? 'Verificando...' : 'Verificar pagamento PIX'}
+            </button>
+          )}
           <button type="button" className="order-details-close-button" onClick={onClose}>
             Fechar
           </button>

@@ -158,6 +158,29 @@ export type AdminOrderItem = {
   observations?: string | null;
 };
 
+// ── PIX sync result types ─────────────────────────────────────────────────
+
+export type PixSyncResult = {
+  paymentId?: string;
+  orderId?: string;
+  txid?: string;
+  previousStatus?: string;
+  currentStatus?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payment?: any;
+  message?: string;
+};
+
+export type AdminPixSyncResult = {
+  success?: boolean;
+  checked?: number;
+  paid?: number;
+  stillPending?: number;
+  failed?: number;
+  items?: PixSyncResult[];
+  message?: string;
+};
+
 export type AdminOrderDetail = AdminOrderListItem & {
   customer?: {
     id: string;

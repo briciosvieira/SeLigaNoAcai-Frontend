@@ -76,9 +76,11 @@ type Props = {
   onClose: () => void;
   onUpdateStatus: (id: string, status: OrderStatus) => Promise<void>;
   onUpdatePaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
+  onSyncOnePixPayment?: (paymentId: string) => Promise<void>;
+  syncingPaymentId?: string | null;
 };
 
-export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStatus, onUpdatePaymentStatus }: Props) {
+export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStatus, onUpdatePaymentStatus, onSyncOnePixPayment, syncingPaymentId }: Props) {
   const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   if (!order && !isLoading) return null;
@@ -321,32 +323,51 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
               )}
 
               {/* Ações */}
-              {(statusActions.length > 0 || order.paymentStatus === 'PENDING') && (
-                <div style={{ borderTop: '1px solid var(--c3)', paddingTop: 16 }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--t2)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Ações</p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {order.paymentStatus === 'PENDING' && (
-                      <ActionButton
-                        label="Confirmar pagamento"
-                        bg="#4caf50"
-                        loading={pendingAction === 'payment'}
-                        disabled={!!pendingAction}
-                        onClick={() => handlePayment('PAID')}
-                      />
-                    )}
-                    {statusActions.map((action) => (
-                      <ActionButton
-                        key={action.status}
-                        label={action.label}
-                        bg={action.bg}
-                        loading={pendingAction === action.status}
-                        disabled={!!pendingAction}
-                        onClick={() => handleStatus(action.status)}
-                      />
-                    ))}
+              {(() => {
+                const isPix = String(order.paymentMethod ?? '').toUpperCase() === 'PIX';
+                const isPending = String(order.paymentStatus ?? '').toUpperCase() === 'PENDING';
+                const pixPaymentId = order.payment?.id ?? order.payments?.[0]?.id ?? null;
+                const showPixSync = isPix && isPending && !!pixPaymentId && !!onSyncOnePixPayment;
+                const showActions = statusActions.length > 0 || order.paymentStatus === 'PENDING' || showPixSync;
+
+                if (!showActions) return null;
+
+                return (
+                  <div style={{ borderTop: '1px solid var(--c3)', paddingTop: 16 }}>
+                    <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--t2)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>Ações</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {showPixSync && (
+                        <ActionButton
+                          label={syncingPaymentId === pixPaymentId ? 'Consultando...' : 'Consultar PIX deste pedido'}
+                          bg="#15803d"
+                          loading={syncingPaymentId === pixPaymentId}
+                          disabled={!!pendingAction || syncingPaymentId === pixPaymentId}
+                          onClick={() => void onSyncOnePixPayment(pixPaymentId!)}
+                        />
+                      )}
+                      {order.paymentStatus === 'PENDING' && (
+                        <ActionButton
+                          label="Confirmar pagamento"
+                          bg="#4caf50"
+                          loading={pendingAction === 'payment'}
+                          disabled={!!pendingAction || !!syncingPaymentId}
+                          onClick={() => handlePayment('PAID')}
+                        />
+                      )}
+                      {statusActions.map((action) => (
+                        <ActionButton
+                          key={action.status}
+                          label={action.label}
+                          bg={action.bg}
+                          loading={pendingAction === action.status}
+                          disabled={!!pendingAction || !!syncingPaymentId}
+                          onClick={() => handleStatus(action.status)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </div>

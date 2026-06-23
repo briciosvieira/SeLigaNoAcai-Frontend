@@ -4,7 +4,8 @@ import { useAdminOrders } from '@/hooks/useAdminOrders';
 import { AdminOrderDetailDrawer } from '../components/AdminOrderDetailDrawer';
 import { formatBRL, getOrderTotal } from '@/utils/currency.util';
 import { formatDateTime } from '@/utils/date.util';
-import type { AdminOrderListItem, OrderStatus, PaymentStatus } from '@/types/order.types';
+import { syncAdminPendingPixPaymentsRequest, syncAdminPixPaymentRequest } from '@/services/payments.service';
+import type { AdminOrderListItem, AdminPixSyncResult, OrderStatus, PaymentStatus } from '@/types/order.types';
 
 /* ── Mapas de label / cor ── */
 
@@ -65,6 +66,10 @@ const FILTERS: { label: string; value: FilterValue }[] = [
 
 /* ── Helpers ── */
 
+function isPaidStatus(status?: string | null) {
+  return String(status ?? '').toUpperCase() === 'PAID';
+}
+
 function StatusBadge({ status, map }: { status: string; map: Record<string, { bg: string; color: string }> }) {
   const c = map[status] ?? { bg: 'rgba(150,150,150,0.15)', color: '#aaa' };
   return (
@@ -89,47 +94,122 @@ export function AdminOrdersPage() {
   const {
     orders, selectedOrder, isLoading, isDetailLoading,
     loadOrders, openOrderDetail, closeOrderDetail,
-    updateOrderStatus, updatePaymentStatus,
+    updateOrderStatus, updatePaymentStatus, refreshSelectedOrder,
   } = useAdminOrders();
 
   const [filter, setFilter] = useState<FilterValue>('ALL');
 
-  useEffect(() => { loadOrders(); }, []);
+  // ── PIX sync state ──────────────────────────────────────────
+  const [syncingAllPix, setSyncingAllPix] = useState(false);
+  const [adminPixSyncSummary, setAdminPixSyncSummary] = useState<AdminPixSyncResult | null>(null);
+  const [adminPixSyncError, setAdminPixSyncError] = useState<string | null>(null);
+  const [syncingPaymentId, setSyncingPaymentId] = useState<string | null>(null);
+
+  useEffect(() => { void loadOrders(); }, []);
 
   const filtered = filter === 'ALL'
     ? orders
     : orders.filter((o) => o.orderStatus === filter);
 
+  async function handleSyncAllPendingPix() {
+    setSyncingAllPix(true);
+    setAdminPixSyncError(null);
+    setAdminPixSyncSummary(null);
+    try {
+      const result = await syncAdminPendingPixPaymentsRequest() as AdminPixSyncResult;
+      setAdminPixSyncSummary(result);
+      await loadOrders();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const msg = e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message
+        ?? 'Não foi possível sincronizar os PIX pendentes.';
+      setAdminPixSyncError(msg);
+    } finally {
+      setSyncingAllPix(false);
+    }
+  }
+
+  async function handleSyncOnePixPayment(paymentId: string) {
+    setSyncingPaymentId(paymentId);
+    setAdminPixSyncError(null);
+    try {
+      const result = await syncAdminPixPaymentRequest(paymentId);
+      setAdminPixSyncSummary({
+        checked: 1,
+        paid: isPaidStatus(result?.currentStatus) ? 1 : 0,
+        stillPending: isPaidStatus(result?.currentStatus) ? 0 : 1,
+        failed: 0,
+      });
+      await loadOrders();
+      await refreshSelectedOrder();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+      const msg = e?.response?.data?.message ?? e?.response?.data?.error ?? e?.message
+        ?? 'Não foi possível consultar este pagamento PIX.';
+      setAdminPixSyncError(msg);
+    } finally {
+      setSyncingPaymentId(null);
+    }
+  }
+
   return (
     <div style={{ position: 'relative' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h1 style={{ fontSize: '1.35rem', fontWeight: 800 }}>Pedidos</h1>
           <p style={{ fontSize: '0.8rem', color: 'var(--t2)', marginTop: 2 }}>
             {filtered.length} pedido{filtered.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={loadOrders}
-          disabled={isLoading}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', background: 'var(--c2)', border: '1px solid var(--c3)',
-            borderRadius: 'var(--r-md)', color: 'var(--t2)', cursor: isLoading ? 'not-allowed' : 'pointer',
-            fontSize: '0.8rem', fontWeight: 600,
-          }}
-        >
-          <RefreshCw size={14} style={isLoading ? { animation: 'spin 0.8s linear infinite' } : {}} />
-          Atualizar
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={handleSyncAllPendingPix}
+            disabled={syncingAllPix || isLoading}
+            className="admin-pix-sync-button"
+          >
+            {syncingAllPix
+              ? <><RefreshCw size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Sincronizando...</>
+              : '⚡ Sincronizar PIX pendentes'}
+          </button>
+          <button
+            type="button"
+            onClick={loadOrders}
+            disabled={isLoading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', background: 'var(--c2)', border: '1px solid var(--c3)',
+              borderRadius: 'var(--r-md)', color: 'var(--t2)', cursor: isLoading ? 'not-allowed' : 'pointer',
+              fontSize: '0.8rem', fontWeight: 600,
+            }}
+          >
+            <RefreshCw size={14} style={isLoading ? { animation: 'spin 0.8s linear infinite' } : {}} />
+            Atualizar
+          </button>
+        </div>
       </div>
+
+      {/* PIX sync feedback */}
+      {adminPixSyncError && (
+        <div className="admin-pix-sync-error">{adminPixSyncError}</div>
+      )}
+      {adminPixSyncSummary && (
+        <div className="admin-pix-sync-summary">
+          <strong>Sincronização concluída</strong>
+          <span>Verificados: {adminPixSyncSummary.checked ?? 0}</span>
+          <span>Pagos: {adminPixSyncSummary.paid ?? 0}</span>
+          <span>Pendentes: {adminPixSyncSummary.stillPending ?? 0}</span>
+          <span>Falhas: {adminPixSyncSummary.failed ?? 0}</span>
+        </div>
+      )}
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16, paddingBottom: 4, scrollbarWidth: 'none' }}>
         {FILTERS.map((f) => (
           <button
             key={f.value}
+            type="button"
             onClick={() => setFilter(f.value)}
             style={{
               flexShrink: 0, padding: '6px 14px',
@@ -230,6 +310,8 @@ export function AdminOrdersPage() {
         onClose={closeOrderDetail}
         onUpdateStatus={updateOrderStatus}
         onUpdatePaymentStatus={updatePaymentStatus}
+        onSyncOnePixPayment={handleSyncOnePixPayment}
+        syncingPaymentId={syncingPaymentId}
       />
 
       <style>{styles}</style>
@@ -330,6 +412,55 @@ const styles = `
   }
   .ao-card:hover { border-color: var(--roxo-v); }
 
+  .admin-pix-sync-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border: 0;
+    border-radius: var(--r-md);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .admin-pix-sync-button:disabled { cursor: not-allowed; opacity: 0.6; }
+  .admin-pix-sync-button.secondary {
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #86efac;
+  }
+
+  .admin-pix-sync-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    margin-bottom: 12px;
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.13);
+    border: 1px solid rgba(34, 197, 94, 0.20);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .admin-pix-sync-error {
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    margin-bottom: 12px;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.13);
+    border: 1px solid rgba(239, 68, 68, 0.20);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
   @media (min-width: 1024px) {
     .ao-cards      { display: none; }
     .ao-table-wrap {
@@ -342,5 +473,10 @@ const styles = `
     .ao-table { width: 100%; border-collapse: collapse; }
     .ao-row   { cursor: pointer; transition: background 0.1s; }
     .ao-row:hover { background: var(--c2); }
+  }
+
+  @media (max-width: 640px) {
+    .admin-pix-sync-button { width: 100%; justify-content: center; }
+    .admin-pix-sync-summary { flex-direction: column; gap: 6px; }
   }
 `;

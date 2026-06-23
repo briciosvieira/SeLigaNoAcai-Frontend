@@ -648,3 +648,74 @@
     gap: 8px;
   }
 }
+
+/* ── PIX sync ── */
+
+.customer-order-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.order-pix-sync-button {
+  min-height: 42px;
+  flex: 1;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 950;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.order-pix-sync-button:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.order-pix-sync-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.order-pix-sync-alert {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.order-pix-sync-alert.success {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.13);
+  border: 1px solid rgba(34, 197, 94, 0.20);
+}
+
+.order-pix-sync-alert.error {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.13);
+  border: 1px solid rgba(239, 68, 68, 0.20);
+}
+
+/* Modal footer with PIX sync button */
+.order-details-footer {
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .customer-order-card-actions {
+    flex-direction: column;
+  }
+
+  .order-pix-sync-button {
+    width: 100%;
+  }
+}
