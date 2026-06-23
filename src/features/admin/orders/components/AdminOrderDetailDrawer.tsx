@@ -134,16 +134,6 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
   const paymentStatusColors = order ? (PAYMENT_STATUS_COLOR[order.paymentStatus] ?? PAYMENT_STATUS_COLOR.PENDING) : PAYMENT_STATUS_COLOR.PENDING;
   const statusActions = order ? getStatusActions(order.orderStatus) : [];
 
-  const hasDeliveryInfo = order && (
-    neighborhood ||
-    order.street ||
-    order.addressNumber ||
-    order.complement ||
-    order.apartment ||
-    order.referencePoint ||
-    order.deliveryAddress
-  );
-
   return (
     <>
       {/* Backdrop */}
@@ -221,16 +211,36 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
                 </span>
               </div>
 
-              {/* Cliente */}
-              <Section icon={<User size={15} />} title="Cliente">
-                <InfoRow label="Nome" value={customerName} />
-                {customerPhone && (
-                  <PhoneRow phone={customerPhone} label="Telefone" />
-                )}
-                {neighborhood && <InfoRow label="Bairro" value={neighborhood} />}
-                {customerEmail && <InfoRow label="E-mail" value={customerEmail} />}
-                {order.customer?.cpf && <InfoRow label="CPF" value={order.customer.cpf} />}
-              </Section>
+              {/* Cliente / Entrega — tudo no topo */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                  <span style={{ color: 'var(--roxo-c)' }}><User size={15} /></span>
+                  <span style={{ color: 'var(--roxo-c)' }}><MapPin size={15} /></span>
+                  <p style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--t2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Cliente / Entrega
+                  </p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <InfoRow label="Nome" value={customerName} />
+                  {customerPhone && (
+                    <PhoneRow phone={customerPhone} label="Telefone" />
+                  )}
+                  {customerEmail && <InfoRow label="E-mail" value={customerEmail} />}
+                  {order.customer?.cpf && <InfoRow label="CPF" value={order.customer.cpf} />}
+                  {neighborhood && <WideInfoRow label="Bairro" value={neighborhood} />}
+                  {order.deliveryFee != null && (
+                    <WideInfoRow label="Taxa de entrega" value={formatBRL(deliveryFee)} />
+                  )}
+                  {order.street && <WideInfoRow label="Rua / Avenida" value={order.street} />}
+                  {order.addressNumber && <WideInfoRow label="Número" value={order.addressNumber} />}
+                  {order.complement && <WideInfoRow label="Complemento" value={order.complement} />}
+                  {order.apartment && <WideInfoRow label="Apto / Bloco" value={order.apartment} />}
+                  {order.referencePoint && <WideInfoRow label="Ponto de referência" value={order.referencePoint} />}
+                  {order.deliveryAddress && !order.street && (
+                    <WideInfoRow label="Endereço" value={order.deliveryAddress} />
+                  )}
+                </div>
+              </div>
 
               {/* Itens */}
               <Section icon={<ShoppingBag size={15} />} title={`Itens${order.items?.length ? ` (${order.items.length})` : ''}`}>
@@ -342,37 +352,6 @@ export function AdminOrderDetailDrawer({ order, isLoading, onClose, onUpdateStat
                 </div>
               </div>
 
-              {/* Dados de entrega — exibido após o valor */}
-              {hasDeliveryInfo && (
-                <Section icon={<MapPin size={15} />} title="Dados de entrega">
-                  {neighborhood && (
-                    <WideInfoRow label="Bairro" value={neighborhood} />
-                  )}
-                  {order.deliveryFee != null && (
-                    <WideInfoRow label="Taxa de entrega" value={formatBRL(deliveryFee)} />
-                  )}
-                  {order.street && (
-                    <WideInfoRow label="Rua / Avenida" value={order.street} />
-                  )}
-                  {order.addressNumber && (
-                    <WideInfoRow label="Número" value={order.addressNumber} />
-                  )}
-                  {order.complement && (
-                    <WideInfoRow label="Complemento" value={order.complement} />
-                  )}
-                  {order.apartment && (
-                    <WideInfoRow label="Apto / Bloco" value={order.apartment} />
-                  )}
-                  {order.referencePoint && (
-                    <WideInfoRow label="Ponto de referência" value={order.referencePoint} />
-                  )}
-                  {/* Fallback: endereço completo em string quando campos individuais não existem */}
-                  {order.deliveryAddress && !order.street && (
-                    <WideInfoRow label="Endereço" value={order.deliveryAddress} />
-                  )}
-                </Section>
-              )}
-
               {/* Observações */}
               {order.notes && (
                 <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 'var(--r-md)', padding: '10px 14px' }}>
@@ -471,11 +450,11 @@ function WideInfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PhoneRow({ phone, label, wide }: { phone: string; label: string; wide?: boolean }) {
+function PhoneRow({ phone, label }: { phone: string; label: string }) {
   const whatsappUrl = buildWhatsAppUrl(phone);
   return (
     <div style={{ display: 'flex', gap: 8, fontSize: '0.875rem', alignItems: 'center' }}>
-      <span style={{ color: 'var(--t2)', minWidth: wide ? 130 : 70, flexShrink: 0 }}>{label}:</span>
+      <span style={{ color: 'var(--t2)', minWidth: 70, flexShrink: 0 }}>{label}:</span>
       <a
         href={whatsappUrl}
         target="_blank"
