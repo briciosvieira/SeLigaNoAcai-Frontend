@@ -44,6 +44,10 @@ export async function changeMyPasswordRequest(
   return response.data.data;
 }
 
+export async function requestCustomerPasswordRecovery(email: string): Promise<void> {
+  await api.post('/auth/customer/forgot-password', { email });
+}
+
 export async function acceptLegalTermsRequest(): Promise<AuthUser> {
   const response = await api.post('/auth/me/legal-acceptance', {
     termsAccepted: true,

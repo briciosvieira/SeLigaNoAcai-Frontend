@@ -6,6 +6,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import type { CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '@/hooks/useAuth';
 import { RegisterModal } from '@/features/auth/components/RegisterModal';
+import { ForgotPasswordModal } from '@/features/auth/components/ForgotPasswordModal';
 import { Eye, EyeOff } from 'lucide-react';
 import { env } from '@/config/env';
 import acai1 from '@/assets/acai1.png';
@@ -21,6 +22,7 @@ type FormData = z.infer<typeof schema>;
 export function LoginPage() {
   const { login, googleLogin, continueAsGuest, isLoading, error, clearError } = useAuth();
   const [showRegister, setShowRegister] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -132,6 +134,25 @@ export function LoginPage() {
                   </div>
                 )}
 
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => { clearError(); setShowForgotPassword(true); }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'rgba(134, 239, 172, 0.85)',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      padding: 0,
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Esqueceu sua senha?
+                  </button>
+                </div>
+
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -228,6 +249,7 @@ export function LoginPage() {
       </div>
 
       {showRegister && <RegisterModal onClose={() => setShowRegister(false)} />}
+      <ForgotPasswordModal isOpen={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
 
       <style>{loginStyles}</style>
     </>

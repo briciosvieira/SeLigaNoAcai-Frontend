@@ -55,7 +55,7 @@ export function TermsOfUsePage() {
           <li><strong>Dinheiro na entrega</strong> — informe no pedido se precisar de troco.</li>
         </ul>
         <p>
-          Pedidos com pagamento via PIX expiram em 30 minutos. Após esse prazo, o pedido pode
+          Pedidos com pagamento via PIX expiram em 5 minutos. Após esse prazo, o pedido pode
           ser cancelado automaticamente.
         </p>
 

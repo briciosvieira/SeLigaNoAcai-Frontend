@@ -16,6 +16,7 @@ import {
   LogOut,
   ArrowLeft,
   Zap,
+  KeyRound,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import { Toast } from '@/components/ui/Toast';
@@ -47,7 +48,10 @@ export function AdminLayout() {
     ...(canManageProducts ? [{ to: '/admin/loyalty', label: 'Fidelidade', icon: <Gift size={18} />, end: false }] : []),
     { to: '/admin/customers', label: 'Clientes', icon: <Users size={18} /> },
     ...(canManagePayments ? [{ to: '/admin/inter-webhook', label: 'PIX Inter', icon: <Zap size={18} />, end: false }] : []),
-    ...(isAdmin ? [{ to: '/admin/users', label: 'Usuários', icon: <UserCog size={18} />, end: false }] : []),
+    ...(isAdmin ? [
+      { to: '/admin/users', label: 'Usuários', icon: <UserCog size={18} />, end: false },
+      { to: '/admin/password-recovery', label: 'Recuperação de senha', icon: <KeyRound size={18} />, end: false },
+    ] : []),
   ];
 
   function handleLogout() {

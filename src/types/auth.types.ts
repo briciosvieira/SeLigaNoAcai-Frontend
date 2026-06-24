@@ -14,6 +14,7 @@ export type AuthUser = {
   customerCode?: string | null;
   termsAcceptedAt?: string | null;
   privacyAcceptedAt?: string | null;
+  mustChangePassword?: boolean | null;
 };
 
 export type AuthResponse = {

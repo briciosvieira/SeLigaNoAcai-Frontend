@@ -28,6 +28,8 @@ import { AdminPromotionsPage } from '@/features/admin/promotions/pages/AdminProm
 import { AdminLoyaltyPage } from '@/features/admin/loyalty/pages/AdminLoyaltyPage';
 import { AdminAnnouncementsPage } from '@/features/admin/announcements/pages/AdminAnnouncementsPage';
 import { AdminInterWebhookPage } from '@/features/admin/inter-webhook/pages/AdminInterWebhookPage';
+import { ForceChangePasswordPage } from '@/features/auth/pages/ForceChangePasswordPage';
+import { AdminPasswordRecoveryPage } from '@/features/admin/password-recovery/pages/AdminPasswordRecoveryPage';
 
 export const router = createBrowserRouter([
   {
@@ -54,6 +56,7 @@ export const router = createBrowserRouter([
               { path: '/orders', element: <OrdersPage /> },
               { path: '/profile', element: <ProfilePage /> },
               { path: '/loyalty', element: <LoyaltyPage /> },
+              { path: '/alterar-senha', element: <ForceChangePasswordPage /> },
             ],
           },
         ],
@@ -87,6 +90,7 @@ export const router = createBrowserRouter([
                 children: [
                   { path: '/admin/users', element: <AdminUsersPage /> },
                   { path: '/admin/inter-webhook', element: <AdminInterWebhookPage /> },
+                  { path: '/admin/password-recovery', element: <AdminPasswordRecoveryPage /> },
                 ],
               },
             ],

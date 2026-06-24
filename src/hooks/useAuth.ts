@@ -17,8 +17,12 @@ import type {
 } from '@/types/auth.types';
 import type { AuthResponse } from '@/types/auth.types';
 
-function redirectAfterLogin(navigate: ReturnType<typeof useNavigate>, _auth: AuthResponse) {
-  navigate('/', { replace: true });
+function redirectAfterLogin(navigate: ReturnType<typeof useNavigate>, auth: AuthResponse) {
+  if (auth.user?.role === 'CUSTOMER' && auth.user?.mustChangePassword) {
+    navigate('/alterar-senha', { replace: true });
+  } else {
+    navigate('/', { replace: true });
+  }
 }
 
 export function useAuth() {
